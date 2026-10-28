@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>JARVIS - Virtual Assistant</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome / Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Visual display / GIF (giphy.gif ёнига қўйсангиз кўринади; бўлмаса анимацияли орб) -->
+        <div class="image-container">
+            <div class="orb" id="orb"><i></i><i></i><i></i></div>
+            <img src="giphy.gif" alt="JARVIS Visual" onerror="this.remove()" onload="document.getElementById('orb').style.display='none'">
+        </div>
+        <h1>J A R V I S</h1>
+        <p id="subtitle">I'm a Virtual Assistant JARVIS, How may I help you?</p>
+        <p id="heard" class="heard"></p>
+
+        <!-- Interactive Mic Button -->
+        <button id="talkBtn" onclick="startRecognition()">
+            <i class="fas fa-microphone"></i> Click here to speak
+        </button>
+
+        <select id="lang" aria-label="Language">
+            <option value="en-US">English</option>
+            <option value="uz-UZ">Ўзбекча</option>
+            <option value="ru-RU">Русский</option>
+        </select>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
