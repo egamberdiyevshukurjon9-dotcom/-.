@@ -1,0 +1,20 @@
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(ellipse at 50% 0%,#0a1c2b,#03070d 70%);color:#d6f6ff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}
+.container{width:min(480px,92vw);padding:24px 16px}
+h1{color:#27e3ff;letter-spacing:.5em;margin:18px 0 6px;text-shadow:0 0 14px #27e3ff;font-weight:600}
+p{margin:6px 0;color:#9fc6d4}
+.heard{min-height:1.4em;font-style:italic;color:#6f98a8}
+.image-container{position:relative;width:min(70vw,260px);aspect-ratio:1;margin:0 auto}
+.image-container img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;box-shadow:0 0 40px #27e3ff80}
+.orb{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,#eaffff 0,#27e3ff 22%,#0a9bb540 60%,transparent 70%);animation:pulse 2.4s ease-in-out infinite}
+.orb i{position:absolute;inset:6%;border:2px dashed #27e3ff;border-radius:50%;animation:spin 8s linear infinite}
+.orb i:nth-child(2){inset:-4%;border-style:dotted;animation-duration:14s;animation-direction:reverse}
+.orb i:nth-child(3){inset:16%;border-style:solid;border-color:#27e3ff80;animation-duration:5s}
+body.listening .orb,body.listening .image-container img{animation-duration:.7s}
+body.listening #talkBtn{background:#27e3ff;color:#001018;box-shadow:0 0 26px #27e3ff}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{transform:scale(1.06);filter:brightness(1.25)}}
+#talkBtn{margin-top:14px;padding:14px 26px;font-size:16px;border-radius:30px;border:2px solid #27e3ff;background:transparent;color:#27e3ff;cursor:pointer;transition:.2s}
+#talkBtn:hover{box-shadow:0 0 18px #27e3ff80}
+#lang{display:block;margin:16px auto 0;background:#08121c;color:#d6f6ff;border:1px solid #12344a;border-radius:8px;padding:6px 10px}
