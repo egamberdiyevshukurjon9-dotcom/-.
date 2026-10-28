@@ -2,556 +2,1019 @@
 <html lang="uz">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Жарвис — овозли ёрдамчи</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#03070d">
+<title>Жарвис — ҳолограф овозли ёрдамчи</title>
 <style>
-  :root{
-    --bg:#03070d; --panel:#08121c; --line:#12344a; --cyan:#27e3ff; --cyan2:#0a9bb5;
-    --text:#d6f6ff; --dim:#6f98a8; --warn:#ffb347; --ok:#4dffb0;
-  }
+  :root{ --bg:#03070d; --panel:#08121c; --line:#12344a; --cyan:#27e3ff; --text:#d6f6ff; --dim:#6f98a8; --warn:#ffb347; --bad:#ff4d5e; }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
-  body{
-    background:radial-gradient(ellipse at 50% 20%,#0a1c2b 0%,var(--bg) 65%);
-    color:var(--text); font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    display:flex; flex-direction:column; min-height:100dvh;
-  }
-  header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
-  header h1{font-size:18px;letter-spacing:.3em;margin:0;color:var(--cyan);font-weight:600}
-  header .status{font-size:13px;color:var(--dim)}
-  main{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 16px 16px;max-width:760px;width:100%;margin:0 auto;min-height:0}
-  #orbWrap{position:relative;width:min(58vw,260px);aspect-ratio:1;flex:none;margin-top:8px}
-  canvas{width:100%;height:100%;display:block}
-  #state{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);min-height:1.4em;text-align:center}
-  #interim{min-height:1.4em;color:var(--dim);font-style:italic;text-align:center;font-size:15px}
-  #log{flex:1;width:100%;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:rgba(8,18,28,.7);padding:12px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+  body{ background:radial-gradient(ellipse at 50% 0%,#0a1c2b 0%,var(--bg) 70%); color:var(--text);
+    font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; display:flex; flex-direction:column; min-height:100dvh; overflow-x:hidden }
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+  header h1{font-size:17px;letter-spacing:.35em;margin:0;color:var(--cyan);font-weight:600;text-shadow:0 0 12px var(--cyan)}
+  header .right{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim)}
+  #lockBadge{border:1px solid var(--cyan);color:var(--cyan);background:transparent;border-radius:14px;padding:3px 12px;cursor:pointer;font-size:13px}
+  body.locked #lockBadge{border-color:var(--bad);color:var(--bad)}
+
+  /* ---- ҳолограмма саҳнаси ---- */
+  #stage{position:relative;width:100%;height:min(46dvh,440px);flex:none;overflow:hidden;border-bottom:1px solid var(--line);
+    background:radial-gradient(ellipse at 50% 100%,color-mix(in srgb,var(--cyan) 22%,transparent),transparent 62%)}
+  #holo{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #holo:active{cursor:grabbing}
+  #stage::after{content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.8;
+    background:repeating-linear-gradient(0deg,color-mix(in srgb,var(--cyan) 7%,transparent) 0 1px,transparent 1px 3px);animation:scan 9s linear infinite}
+  @keyframes scan{from{background-position:0 0}to{background-position:0 120px}}
+  .beam{position:absolute;left:50%;bottom:0;width:62%;height:50%;transform:translateX(-50%);pointer-events:none;
+    background:linear-gradient(to top,color-mix(in srgb,var(--cyan) 24%,transparent),transparent);clip-path:polygon(16% 100%,84% 100%,100% 0,0 0)}
+  .c{position:absolute;width:20px;height:20px;border:2px solid var(--cyan);opacity:.75;pointer-events:none}
+  .c.tl{top:8px;left:8px;border-right:0;border-bottom:0}.c.tr{top:8px;right:8px;border-left:0;border-bottom:0}
+  .c.bl{bottom:8px;left:8px;border-right:0;border-top:0}.c.br{bottom:8px;right:8px;border-left:0;border-top:0}
+  #holoLabel{position:absolute;top:12px;left:0;right:0;text-align:center;letter-spacing:.35em;font-size:12px;color:var(--cyan);text-transform:uppercase;pointer-events:none;text-shadow:0 0 8px var(--cyan)}
+  .tele{position:absolute;bottom:12px;font-size:11px;letter-spacing:.12em;color:var(--cyan);opacity:.8;pointer-events:none;font-variant-numeric:tabular-nums}
+  #teleL{left:16px}#teleR{right:16px;text-align:right}
+  #fallbackMsg{position:absolute;inset:auto 0 40px 0;text-align:center;color:var(--warn);font-size:13px;display:none}
+
+  main{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px 14px 14px;max-width:820px;width:100%;margin:0 auto;min-height:0}
+  #chips{flex:none;display:flex;gap:6px;overflow-x:auto;width:100%;padding:2px 0 4px;scrollbar-width:none}
+  #chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:14px;padding:4px 12px;font-size:13px;cursor:pointer}
+  .chip.on{border-color:var(--cyan);color:var(--cyan)}
+  #state{flex:none;font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--cyan);min-height:1.3em;text-align:center}
+  #interim{flex:none;min-height:1.3em;color:var(--dim);font-style:italic;text-align:center;font-size:15px}
+  #log{flex:1;width:100%;overflow-y:auto;border:1px solid var(--line);border-radius:12px;background:rgba(8,18,28,.7);padding:12px;display:flex;flex-direction:column;gap:8px;min-height:110px;transition:filter .3s}
+  body.locked #log{filter:blur(5px)}
   .msg{max-width:88%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
   .me{align-self:flex-end;background:#0d2a3b;border:1px solid var(--line)}
-  .bot{align-self:flex-start;background:#0a1a26;border:1px solid var(--cyan2);color:var(--text)}
-  .sys{align-self:center;color:var(--dim);font-size:13px}
-  .controls{display:flex;gap:8px;width:100%;align-items:center}
-  #mic{
-    flex:none;width:58px;height:58px;border-radius:50%;border:2px solid var(--cyan);background:transparent;color:var(--cyan);
-    cursor:pointer;display:grid;place-items:center;transition:.2s;
-  }
+  .bot{align-self:flex-start;background:#0a1a26;border:1px solid color-mix(in srgb,var(--cyan) 55%,transparent)}
+  .sys{align-self:center;color:var(--dim);font-size:13px;text-align:center}
+  .controls{flex:none;display:flex;gap:8px;width:100%;align-items:center}
+  #mic{flex:none;width:58px;height:58px;border-radius:50%;border:2px solid var(--cyan);background:transparent;color:var(--cyan);cursor:pointer;display:grid;place-items:center;transition:.2s}
   #mic svg{width:26px;height:26px;fill:currentColor}
-  #mic.on{background:var(--cyan);color:#001018;box-shadow:0 0 24px var(--cyan)}
+  #mic.on{background:var(--cyan);color:#001018;box-shadow:0 0 26px var(--cyan)}
   #txt{flex:1;min-width:0;height:44px;border-radius:22px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:0 16px;font-size:16px;outline:none}
   #txt:focus{border-color:var(--cyan)}
   button.small{height:44px;border-radius:22px;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:0 14px;cursor:pointer;font-size:14px}
   button.small:hover{border-color:var(--cyan)}
+  button.danger{border-color:var(--bad);color:var(--bad)}
   details{width:100%;border:1px solid var(--line);border-radius:12px;background:rgba(8,18,28,.7);padding:8px 12px}
+  body.locked details{display:none}
   summary{cursor:pointer;color:var(--dim);font-size:14px}
   .row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-top:10px;font-size:14px}
   .row label{display:flex;align-items:center;gap:6px;color:var(--dim)}
-  select,input[type=password],input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px}
-  input[type=password]{flex:1;min-width:180px}
-  .help{font-size:13px;color:var(--dim);margin-top:8px}
-  .help code{color:var(--cyan)}
+  select,input[type=password],input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px;max-width:100%}
+  .grow{flex:1;min-width:180px}
+  .help{font-size:13px;color:var(--dim);margin-top:8px}.help code{color:var(--cyan)}
   #warn{display:none;width:100%;padding:10px 12px;border:1px solid var(--warn);border-radius:10px;color:var(--warn);font-size:14px}
+
+  /* ---- эга созлаш ойнаси ---- */
+  #gate{position:fixed;inset:0;background:rgba(3,7,13,.92);display:none;align-items:center;justify-content:center;padding:16px;z-index:10}
+  #gate.show{display:flex}
+  .card{width:min(440px,100%);border:1px solid var(--cyan);border-radius:14px;background:var(--panel);padding:18px;box-shadow:0 0 40px color-mix(in srgb,var(--cyan) 25%,transparent)}
+  .card h2{margin:0 0 6px;font-size:18px;color:var(--cyan);letter-spacing:.1em}
+  .card p{margin:6px 0 10px;color:var(--dim);font-size:14px}
+  .card input{width:100%;margin:5px 0;height:40px}
+  .card .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+  #gateErr{color:var(--bad);font-size:13px;min-height:1.2em}
 </style>
 </head>
 <body>
 <header>
   <h1>ЖАРВИС</h1>
-  <div class="status" id="netStatus"></div>
+  <div class="right"><span id="netStatus"></span><button id="lockBadge" title="Қулф">🔓</button></div>
 </header>
+
+<section id="stage">
+  <canvas id="holo"></canvas>
+  <div class="beam"></div>
+  <i class="c tl"></i><i class="c tr"></i><i class="c bl"></i><i class="c br"></i>
+  <div id="holoLabel"></div>
+  <div class="tele" id="teleL"></div><div class="tele" id="teleR"></div>
+  <div id="fallbackMsg"></div>
+</section>
 
 <main>
   <div id="warn"></div>
-  <div id="orbWrap"><canvas id="orb" width="520" height="520"></canvas></div>
-  <div id="state">Тайёр</div>
+  <div id="chips"></div>
+  <div id="state"></div>
   <div id="interim"></div>
   <div id="log" aria-live="polite"></div>
 
   <div class="controls">
-    <button id="mic" title="Микрофонни ёқиш / ўчириш" aria-label="Микрофон">
+    <button id="mic" title="Микрофон" aria-label="Микрофон">
       <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
     </button>
-    <input id="txt" type="text" placeholder="ёки бу ерга ёзинг…" autocomplete="off">
+    <input id="txt" type="text" autocomplete="off">
     <button class="small" id="send">Юбор</button>
+    <button class="small" id="hush" title="Овозни тўхтат">■</button>
   </div>
 
-  <details>
-    <summary>Созламалар ва буйруқлар</summary>
+  <details id="settings">
+    <summary id="sumSettings">Созламалар</summary>
     <div class="row">
-      <label>Тил
-        <select id="lang">
-          <option value="uz">Ўзбекча</option>
-          <option value="ru">Русский</option>
-          <option value="en">English</option>
-        </select>
-      </label>
+      <label>Тил <select id="lang"><option value="uz">Ўзбекча</option><option value="ru">Русский</option><option value="en">English</option></select></label>
+      <label>Овоз <select id="voice"></select></label>
       <label>Тезлик <input id="rate" type="range" min="0.7" max="1.4" step="0.05" value="1"></label>
-      <label><input id="wake" type="checkbox"> Фақат «Жарвис» деганда жавоб бер</label>
-      <label><input id="mute" type="checkbox"> Овозсиз (фақат ёзув)</label>
+      <label>Тембр <input id="pitch" type="range" min="0.5" max="1.5" step="0.05" value="0.85"></label>
     </div>
     <div class="row">
-      <label style="flex:1">Claude API калити (ихтиёрий — ақлли жавоблар учун)
-        <input id="apikey" type="password" placeholder="sk-ant-..." autocomplete="off">
+      <label><input id="wake" type="checkbox"> Фақат «Жарвис» деганда жавоб бер</label>
+      <label><input id="mute" type="checkbox"> Овозсиз</label>
+      <label><input id="spin" type="checkbox" checked> Ҳолограмма айлансин</label>
+      <label>Ранг
+        <select id="color"><option value="cyan">Кўк</option><option value="green">Яшил</option><option value="gold">Олтин</option><option value="purple">Бинафша</option><option value="white">Оқ</option><option value="red">Қизил</option></select>
       </label>
+    </div>
+    <div class="row">
+      <label>Эга исми <input id="ownerName" type="text" style="width:140px"></label>
+      <label>Автоқулф
+        <select id="autolock"><option value="0">Ўчиқ</option><option value="2">2 дақиқа</option><option value="5">5 дақиқа</option><option value="10">10 дақиқа</option><option value="30">30 дақиқа</option></select>
+      </label>
+      <button class="small" id="chPass">Паролни ўзгартир</button>
+      <button class="small danger" id="resetOwner">Эгани ўчир</button>
+    </div>
+    <div class="row">
+      <label class="grow">Claude API калити (ихтиёрий)
+        <input id="apikey" class="grow" type="password" placeholder="sk-ant-..." autocomplete="off">
+      </label>
+      <label>Модель <select id="model">
+        <option value="claude-haiku-4-5-20251001">Haiku (тез)</option>
+        <option value="claude-sonnet-5-5">Sonnet</option>
+        <option value="claude-opus-5-5">Opus (кучли)</option>
+      </select></label>
       <button class="small" id="clear">Тарихни тозала</button>
     </div>
-    <div class="help">
-      Калит фақат шу браузерда (localStorage) сақланади ва Anthropic'дан бошқа жойга юборилмайди.
-      Калитсиз Жарвис ўрнатилган буйруқларни бажаради, калит билан эса ҳар қандай саволга жавоб беради.
-    </div>
-    <div class="help">
-      <b>Буйруқлар намунаси:</b><br>
-      <code>соат неча</code> · <code>бугун қайси сана</code> · <code>об-ҳаво</code> · <code>ютубни оч</code> ·
-      <code>гугл қидир мушук расмлари</code> · <code>ютуб қидир уzbek music</code> ·
-      <code>5 плюс 7 кўпайтир 3</code> · <code>таймер 2 дақиқа</code> · <code>ҳазил айт</code> · <code>тўхта</code>
-    </div>
+    <div class="help">Калит, парол ҳэши ва ёзувлар фақат шу браузерда (localStorage) сақланади. Парол очиқ ҳолда сақланмайди (PBKDF2 ҳэш).</div>
+    <div class="help" id="cmdHelp"></div>
   </details>
 </main>
 
+<div id="gate"><div class="card">
+  <h2 id="gTitle"></h2><p id="gText"></p>
+  <input id="gName" type="text" autocomplete="off">
+  <input id="gPass" type="password" autocomplete="new-password">
+  <input id="gPass2" type="password" autocomplete="new-password">
+  <div id="gateErr"></div>
+  <div class="btns"><button class="small" id="gSkip"></button><button class="small" id="gSave" style="border-color:var(--cyan);color:var(--cyan)"></button></div>
+</div></div>
+
 <script>
 "use strict";
-
-/* ------------------------------------------------------------------ *
- *  Матнлар (3 тил)
- * ------------------------------------------------------------------ */
-const T = {
-  uz: {
-    speech:"uz-UZ", fallbackSpeech:"ru-RU",
-    ready:"Тайёр", listening:"Тингламоқдаман…", thinking:"Ўйлаяпман…", speaking:"Гапираяпман…",
-    hello:"Салом! Мен Жарвис. Сизга қандай ёрдам бера оламан?",
-    greetReply:["Салом! Эшитаяпман.","Ассалому алайкум! Буюринг."],
-    who:"Мен Жарвис — сизнинг овозли ёрдамчингизман. Вақтни айта оламан, сайтларни очаман, қидираман, ҳисоблайман ва таймер ўрнатаман.",
-    time:(h,m)=>`Соат ${h} ${m<10?"0"+m:m}`,
-    date:(d)=>"Бугун "+d,
-    opening:(n)=>`${n} очилмоқда`,
-    searching:(q)=>`«${q}» бўйича қидираман`,
-    noQuery:"Нимани қидирай?",
-    calc:(r)=>`Жавоб: ${r}`, calcErr:"Буни ҳисоблай олмадим.",
-    timerSet:(s)=>`Таймер ${fmtDur(s,"uz")}га ўрнатилди`, timerDone:"Таймер тугади!",
-    weatherWait:"Об-ҳавони текширяпман…", weather:(t,w)=>`Ҳозир ташқарида ${t} даража, ${w}.`,
-    weatherErr:"Об-ҳавони олиб бўлмади. Жойлашувга рухсат беринг.",
-    jokes:["Дастурчи нега қоронғида ўтиради? Чунки у светни эмас, баг қидиради.","Компьютер шифокорга бориб: менда вирус бор, деди. Шифокор: дарров уйга кетинг, бу ерга яқинлашманг, деди."],
-    stop:"Хўп, жим бўлдим.", noKey:"Буни тушунмадим. Созламаларга Claude калитини киритсангиз, ҳар қандай саволга жавоб бераман.",
-    aiErr:"Claude билан боғланиб бўлмади: ", micDenied:"Микрофонга рухсат берилмади.",
-    noSR:"Бу браузер овозни таниб олишни қўллаб-қувватламайди. Chrome ёки Edge'дан фойдаланинг (матн ёзиш ишлайверади).",
-    wakeHint:"«Жарвис» деб бошланг.",
-    days:["якшанба","душанба","сешанба","чоршанба","пайшанба","жума","шанба"],
-    months:["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"],
-    wcode:{0:"очиқ осмон",1:"асосан очиқ",2:"қисман булутли",3:"булутли",45:"туман",48:"туман",51:"майда ёмғир",61:"ёмғир",63:"ёмғир",65:"кучли ёмғир",71:"қор",73:"қор",75:"кучли қор",80:"жала",95:"момақалдироқ"},
-    units:{s:"сония",m:"дақиқа",h:"соат"}
-  },
-  ru: {
-    speech:"ru-RU", fallbackSpeech:"ru-RU",
-    ready:"Готов", listening:"Слушаю…", thinking:"Думаю…", speaking:"Говорю…",
-    hello:"Привет! Я Джарвис. Чем могу помочь?",
-    greetReply:["Привет! Слушаю вас.","Здравствуйте! Я на связи."],
-    who:"Я Джарвис, ваш голосовой помощник. Могу назвать время, открыть сайт, найти в интернете, посчитать и поставить таймер.",
-    time:(h,m)=>`Сейчас ${h} ${m<10?"ноль "+m:m}`,
-    date:(d)=>"Сегодня "+d,
-    opening:(n)=>`Открываю ${n}`,
-    searching:(q)=>`Ищу «${q}»`,
-    noQuery:"Что искать?",
-    calc:(r)=>`Ответ: ${r}`, calcErr:"Не смог посчитать.",
-    timerSet:(s)=>`Таймер на ${fmtDur(s,"ru")} запущен`, timerDone:"Таймер сработал!",
-    weatherWait:"Проверяю погоду…", weather:(t,w)=>`Сейчас на улице ${t} градусов, ${w}.`,
-    weatherErr:"Не удалось узнать погоду. Разрешите доступ к геолокации.",
-    jokes:["Почему программист всегда в темноте? Он ищет баги, а не свет.","Заходит программист в лифт, а лифт не работает — у него, видимо, другая версия."],
-    stop:"Хорошо, молчу.", noKey:"Я не понял. Если добавить ключ Claude в настройках, я смогу отвечать на любые вопросы.",
-    aiErr:"Не удалось связаться с Claude: ", micDenied:"Нет доступа к микрофону.",
-    noSR:"Этот браузер не поддерживает распознавание речи. Используйте Chrome или Edge (ввод текстом работает).",
-    wakeHint:"Начните со слова «Джарвис».",
-    days:["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"],
-    months:["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"],
-    wcode:{0:"ясно",1:"в основном ясно",2:"переменная облачность",3:"пасмурно",45:"туман",48:"туман",51:"морось",61:"дождь",63:"дождь",65:"сильный дождь",71:"снег",73:"снег",75:"сильный снег",80:"ливень",95:"гроза"},
-    units:{s:"секунд",m:"минут",h:"часов"}
-  },
-  en: {
-    speech:"en-US", fallbackSpeech:"en-US",
-    ready:"Ready", listening:"Listening…", thinking:"Thinking…", speaking:"Speaking…",
-    hello:"Hello! I'm Jarvis. How can I help?",
-    greetReply:["Hello! I'm listening.","Hi there! At your service."],
-    who:"I'm Jarvis, your voice assistant. I can tell the time, open websites, search the web, do math and set timers.",
-    time:(h,m)=>`It's ${h}:${m<10?"0"+m:m}`,
-    date:(d)=>"Today is "+d,
-    opening:(n)=>`Opening ${n}`,
-    searching:(q)=>`Searching for "${q}"`,
-    noQuery:"What should I search for?",
-    calc:(r)=>`The answer is ${r}`, calcErr:"I couldn't calculate that.",
-    timerSet:(s)=>`Timer set for ${fmtDur(s,"en")}`, timerDone:"Time's up!",
-    weatherWait:"Checking the weather…", weather:(t,w)=>`It's ${t} degrees outside, ${w}.`,
-    weatherErr:"Couldn't get the weather. Please allow location access.",
-    jokes:["Why do programmers prefer dark mode? Because light attracts bugs.","I told my computer I needed a break. It said: no problem, I'll go to sleep."],
-    stop:"Okay, quiet now.", noKey:"I didn't get that. Add a Claude API key in settings and I can answer any question.",
-    aiErr:"Couldn't reach Claude: ", micDenied:"Microphone access denied.",
-    noSR:"This browser doesn't support speech recognition. Use Chrome or Edge (typing still works).",
-    wakeHint:"Start with \"Jarvis\".",
-    days:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
-    months:["January","February","March","April","May","June","July","August","September","October","November","December"],
-    wcode:{0:"clear sky",1:"mostly clear",2:"partly cloudy",3:"overcast",45:"fog",48:"fog",51:"drizzle",61:"rain",63:"rain",65:"heavy rain",71:"snow",73:"snow",75:"heavy snow",80:"showers",95:"thunderstorm"},
-    units:{s:"seconds",m:"minutes",h:"hours"}
-  }
-};
-function fmtDur(sec,l){
-  const u=T[l].units; const h=Math.floor(sec/3600), m=Math.floor(sec%3600/60), s=sec%60;
-  return [h&&`${h} ${u.h}`, m&&`${m} ${u.m}`, s&&`${s} ${u.s}`].filter(Boolean).join(" ");
-}
-
-/* ------------------------------------------------------------------ *
- *  Ҳолат ва ёрдамчи функциялар
- * ------------------------------------------------------------------ */
+/* ====================================================================
+ *  ЖАРВИС — ҳолограф овозли ёрдамчи (битта файл, ташқи кутубхонасиз)
+ * ==================================================================== */
 const $ = id => document.getElementById(id);
 const store = {
   get(k,d){ try{ const v=localStorage.getItem(k); return v===null?d:v; }catch{ return d; } },
-  set(k,v){ try{ localStorage.setItem(k,v); }catch{} }
+  set(k,v){ try{ localStorage.setItem(k,v); }catch{} },
+  del(k){ try{ localStorage.removeItem(k); }catch{} }
 };
-let lang = store.get("jv_lang","uz");
-let state = "idle";          // idle | listening | thinking | speaking
-let active = false;          // микрофон ёқилганми
-let speaking = false;
-let history = [];            // Claude учун суҳбат тарихи
-const sites = {
-  youtube:["https://www.youtube.com","YouTube"], google:["https://www.google.com","Google"],
-  telegram:["https://web.telegram.org","Telegram"], instagram:["https://www.instagram.com","Instagram"],
-  facebook:["https://www.facebook.com","Facebook"], gmail:["https://mail.google.com","Gmail"],
-  maps:["https://maps.google.com","Google Maps"], whatsapp:["https://web.whatsapp.com","WhatsApp"],
-  github:["https://github.com","GitHub"], wikipedia:["https://wikipedia.org","Wikipedia"]
-};
-const siteWords = {
-  youtube:["youtube","ютуб","юtub","ютьюб","yutub","yutube"],
-  google:["google","гугл","гоогле","gugl"],
-  telegram:["telegram","телеграм","telegramm"],
-  instagram:["instagram","инстаграм","инста"],
-  facebook:["facebook","фейсбук","фэйсбук"],
-  gmail:["gmail","джимейл","гмейл","жимейл","почта"],
-  maps:["maps","карта","карты","харита","xarita"],
-  whatsapp:["whatsapp","ватсап","вотсап","уотсап"],
-  github:["github","гитхаб","гитхуб"],
-  wikipedia:["wikipedia","википедия","вики"]
-};
-
-function setState(s){
-  state=s;
-  const t=T[lang];
-  $("state").textContent = s==="listening"?t.listening : s==="thinking"?t.thinking : s==="speaking"?t.speaking : t.ready;
-}
-function addMsg(cls,text){
-  const d=document.createElement("div"); d.className="msg "+cls; d.textContent=text;
-  const log=$("log"); log.appendChild(d); log.scrollTop=log.scrollHeight;
-}
-function showWarn(text){ const w=$("warn"); w.textContent=text; w.style.display=text?"block":"none"; }
 const pick = a => a[Math.floor(Math.random()*a.length)];
-const has = (s,list) => list.some(w => s.includes(w));
 
-/* ------------------------------------------------------------------ *
- *  Овоз чиқариш (TTS)
- * ------------------------------------------------------------------ */
-let voices=[];
-function loadVoices(){ voices = speechSynthesis.getVoices(); }
-if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
-
-function pickVoice(){
-  const t=T[lang];
-  const find = code => voices.find(v=>v.lang.replace("_","-").toLowerCase()===code.toLowerCase())
-                    || voices.find(v=>v.lang.toLowerCase().startsWith(code.slice(0,2).toLowerCase()));
-  const v = find(t.speech);
-  if(v) return {voice:v, lang:v.lang};
-  const f = find(t.fallbackSpeech);
-  return f ? {voice:f, lang:f.lang} : {voice:null, lang:t.fallbackSpeech};
-}
-
-function speak(text){
-  return new Promise(resolve=>{
-    if($("mute").checked || !("speechSynthesis" in window)){ resolve(); return; }
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(text);
-    const {voice,lang:l}=pickVoice();
-    if(voice) u.voice=voice;
-    u.lang=l; u.rate=parseFloat($("rate").value)||1; u.pitch=0.9;
-    speaking=true; setState("speaking"); stopRecognition();
-    const done=()=>{ if(!speaking) return; speaking=false; setState(active?"listening":"idle"); if(active) startRecognition(); resolve(); };
-    u.onend=done; u.onerror=done;
-    // Chrome баъзан onend юбормайди — хавфсизлик тўри
-    const guard=setTimeout(done, 1000 + text.length*120);
-    u.addEventListener("end",()=>clearTimeout(guard));
-    speechSynthesis.speak(u);
-  });
-}
-
-function reply(text){ addMsg("bot",text); return speak(text); }
-
-/* ------------------------------------------------------------------ *
- *  Овозни таниб олиш (STT)
- * ------------------------------------------------------------------ */
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec=null, restartTimer=null;
-
-function startRecognition(){
-  if(!SR || !active || speaking) return;
-  if(rec) return;
-  rec = new SR();
-  rec.lang = T[lang].speech;
-  rec.continuous = true;
-  rec.interimResults = true;
-  rec.onstart = ()=>{ if(!speaking) setState("listening"); };
-  rec.onresult = e=>{
-    let interim="";
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      const r=e.results[i];
-      if(r.isFinal){ $("interim").textContent=""; handleInput(r[0].transcript.trim()); }
-      else interim += r[0].transcript;
-    }
-    if(interim) $("interim").textContent = interim;
-  };
-  rec.onerror = e=>{
-    if(e.error==="not-allowed"||e.error==="service-not-allowed"){
-      active=false; updateMic(); addMsg("sys",T[lang].micDenied);
-    }
-  };
-  rec.onend = ()=>{
-    rec=null; $("interim").textContent="";
-    if(active && !speaking){ clearTimeout(restartTimer); restartTimer=setTimeout(startRecognition,250); }
-    else if(!speaking) setState("idle");
-  };
-  try{ rec.start(); }catch{ rec=null; }
-}
-function stopRecognition(){
-  clearTimeout(restartTimer);
-  if(rec){ const r=rec; rec=null; r.onend=null; try{ r.abort(); }catch{} }
-}
-function updateMic(){ $("mic").classList.toggle("on",active); }
-
-$("mic").onclick = ()=>{
-  if(!SR){ addMsg("sys",T[lang].noSR); return; }
-  active=!active; updateMic();
-  if(active){ startRecognition(); }
-  else { stopRecognition(); speechSynthesis.cancel(); speaking=false; setState("idle"); }
+/* ------------------------------ матнлар ------------------------------ */
+const L = {
+uz:{ speech:"uz-UZ", fallbackSpeech:"ru-RU",
+  ready:"Тайёр", listening:"Тингламоқдаман", thinking:"Ўйлаяпман", speaking:"Гапираяпман", lockedState:"Қулфланган",
+  input:"Буйруқ ёзинг…", inputLocked:"Парол ибора…", send:"Юбор",
+  hello:"Салом, {0}! Жарвис хизматингизга тайёр.", helloAnon:"Салом! Мен Жарвис. Сизга қандай ёрдам бера оламан?",
+  greet:["Салом! Эшитаяпман.","Ассалому алайкум! Буюринг."],
+  lockedMsg:"Тизим қулфланган. Мен фақат эгамга бўйсунаман. Паролни айтинг ёки ёзинг.",
+  unlocked:"Хуш келибсиз, {0}. Тизим очилди.", wrong:"Нотўғри парол. Қолган уриниш: {0}.", tooMany:"Жуда кўп хато. {0} сония кутинг.",
+  nowLocked:"Тизим қулфланди.", ownerSaved:"Эга сақланди. Энди мен фақат сизга бўйсунаман.", ownerRemoved:"Эга ўчирилди. Энди ҳамма фойдалана олади.",
+  gNew:"Эгани созлаш", gNewText:"Жарвис фақат сизга бўйсунсин: исмингиз ва махфий ибора киритинг (камида 4 ҳарф, 2-3 сўз яхши). Ибораини овоз билан ҳам, ёзиб ҳам айтиб очасиз.",
+  gName:"Исмингиз", gPass:"Махфий ибора", gPass2:"Ибораини такрорланг", gSave:"Сақла", gSkip:"Ҳозирча йўқ", gCancel:"Бекор",
+  gErrShort:"Ибора жуда қисқа.", gErrMatch:"Иборалар бир хил эмас.", gErrCons:"Ибора жуда оддий — бошқа сўзлар қўшинг.",
+  bannerLocked:"🔒 Қулфланган — паролни ёзинг ёки микрофонга айтинг.", unlock:"Очиш",
+  who:"Мен Жарвис — фақат сизга бўйсунадиган ҳолограф овозли ёрдамчингизман. Соат, об-ҳаво, курс, Википедия, ҳисоблаш, таймер, ёзувлар ва 3D ҳолограммалар билан ишлайман.",
+  help:"Мисол: «соат неча», «об-ҳаво», «доллар курси», «Амир Темур ким», «5 плюс 7», «таймер 2 дақиқа», «ёзиб қўй сутдан олиш», «ёзувларим», «ҳолограммада юракни кўрсат», «ранг қизил», «қулфла».",
+  time:"Соат {0}:{1}", date:"Бугун {0}", opening:"{0} очилмоқда", searching:"«{0}» бўйича қидираман", noQuery:"Нимани қидирай?",
+  calc:"Жавоб: {0}", calcErr:"Буни ҳисоблай олмадим.", timerSet:"Таймер {0}га ўрнатилди", timerDone:"Таймер тугади!", remind:"Эслатма: {0}",
+  weatherWait:"Об-ҳавони текширяпман…", weather:"Ҳозир {0} даража, {1}. Бугун {3}…{2} даража.", weatherErr:"Об-ҳавони олиб бўлмади. Жойлашувга рухсат беринг.",
+  jokes:["Дастурчи нега қоронғида ўтиради? Чунки у ёруғликни эмас, баг қидиради.","Компьютер шифокорга бориб: менда вирус бор, деди. Шифокор: дарров узоқлашинг, деди."],
+  facts:["Асал ҳеч қачон бузилмайди: мисрликлар қабридан топилган асал ҳали ҳам ейишга яроқли эди.","Сайёрамиз Ер Қуёш атрофида секундига тахминан 30 километр тезликда учади.","Инсон юраги бир умрда уч миллиарддан ортиқ марта уради."],
+  thanks:["Арзимайди!","Доим хизматингизга тайёрман.","Марҳамат!"], fine:["Яхшиман, тизимлар нормада. Сиз-чи?","Ҳаммаси аъло даражада!"],
+  stop:"Хўп, жим бўлдим.", noKey:"Буни тушунмадим. Созламаларга Claude калитини киритсангиз, ҳар қандай саволга жавоб бераман.",
+  aiErr:"Claude билан боғланиб бўлмади: ", micDenied:"Микрофонга рухсат берилмади.",
+  noSR:"Бу браузер овозни таниб олмайди. Chrome ёки Edge ишлатинг (ёзиб буйруқ бериш ишлайверади).",
+  wikiNone:"Бу ҳақда маълумот топмадим.", wikiErr:"Википедияга уланиб бўлмади.",
+  rate:"1 {0} тахминан {1} сўм", rateErr:"Курсни олиб бўлмади.",
+  battery:"Батарея {0} фоиз{1}", charging:", зарядланяпти", noBattery:"Бу қурилмада батарея маълумоти йўқ.",
+  noteSaved:"Ёзиб қўйдим: {0}", noteEmpty:"Ёзувлар йўқ.", notesRead:"Ёзувларингиз: {0}", notesCleared:"Ёзувлар тозаланди.",
+  heads:"Тоҷ чиқди", tails:"Хат чиқди", dice:"Кубик: {0}", random:"Тасодифий сон: {0}",
+  holoShow:"Ҳолограммада: {0}", holoColor:"Ранг ўзгартирилди.", spinOn:"Ҳолограмма айланяпти.", spinOff:"Айланиш тўхтатилди.", zoomIn:"Яқинлаштирдим.", zoomOut:"Узоқлаштирдим.",
+  langSet:"Хўп, ўзбекча гапираман.", fullscreen:"Тўлиқ экран.",
+  shapes:{core:"Жарвис ядроси",globe:"Ер шари",cube:"Куб",pyramid:"Пирамида",torus:"Тор",dna:"ДНК",heart:"Юрак",atom:"Атом",galaxy:"Галактика",saturn:"Сатурн"},
+  days:["якшанба","душанба","сешанба","чоршанба","пайшанба","жума","шанба"],
+  months:["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"],
+  wcode:{0:"очиқ осмон",1:"асосан очиқ",2:"қисман булутли",3:"булутли",45:"туман",48:"туман",51:"майда ёмғир",61:"ёмғир",63:"ёмғир",65:"кучли ёмғир",71:"қор",73:"қор",75:"кучли қор",80:"жала",95:"момақалдироқ"},
+  units:{s:"сония",m:"дақиқа",h:"соат"}, cur:{usd:"доллар",eur:"евро",rub:"рубл"} },
+ru:{ speech:"ru-RU", fallbackSpeech:"ru-RU",
+  ready:"Готов", listening:"Слушаю", thinking:"Думаю", speaking:"Говорю", lockedState:"Заблокировано",
+  input:"Введите команду…", inputLocked:"Секретная фраза…", send:"Отпр.",
+  hello:"Привет, {0}! Джарвис к вашим услугам.", helloAnon:"Привет! Я Джарвис. Чем могу помочь?",
+  greet:["Привет! Слушаю вас.","Здравствуйте! Я на связи."],
+  lockedMsg:"Система заблокирована. Я подчиняюсь только хозяину. Произнесите или введите пароль.",
+  unlocked:"С возвращением, {0}. Система разблокирована.", wrong:"Неверный пароль. Осталось попыток: {0}.", tooMany:"Слишком много ошибок. Подождите {0} сек.",
+  nowLocked:"Система заблокирована.", ownerSaved:"Хозяин сохранён. Теперь я подчиняюсь только вам.", ownerRemoved:"Хозяин удалён. Теперь доступ у всех.",
+  gNew:"Настройка хозяина", gNewText:"Чтобы Джарвис подчинялся только вам, введите имя и секретную фразу (минимум 4 буквы, лучше 2–3 слова). Разблокировать можно голосом или текстом.",
+  gName:"Ваше имя", gPass:"Секретная фраза", gPass2:"Повторите фразу", gSave:"Сохранить", gSkip:"Не сейчас", gCancel:"Отмена",
+  gErrShort:"Фраза слишком короткая.", gErrMatch:"Фразы не совпадают.", gErrCons:"Фраза слишком простая — добавьте слов.",
+  bannerLocked:"🔒 Заблокировано — введите пароль или произнесите его.", unlock:"Открыть",
+  who:"Я Джарвис — голографический помощник, который подчиняется только вам. Время, погода, курсы, Википедия, расчёты, таймеры, заметки и 3D-голограммы.",
+  help:"Примеры: «который час», «погода», «курс доллара», «кто такой Амир Темур», «5 плюс 7», «таймер 2 минуты», «запиши купить молоко», «мои заметки», «покажи голограмму сердца», «цвет красный», «заблокируй».",
+  time:"Сейчас {0}:{1}", date:"Сегодня {0}", opening:"Открываю {0}", searching:"Ищу «{0}»", noQuery:"Что искать?",
+  calc:"Ответ: {0}", calcErr:"Не смог посчитать.", timerSet:"Таймер на {0} запущен", timerDone:"Таймер сработал!", remind:"Напоминание: {0}",
+  weatherWait:"Проверяю погоду…", weather:"Сейчас {0} градусов, {1}. Сегодня от {3} до {2}.", weatherErr:"Не удалось узнать погоду. Разрешите геолокацию.",
+  jokes:["Почему программист сидит в темноте? Он ищет баги, а не свет.","Пришёл компьютер к врачу: у меня вирус. Врач: тогда не подходите ко мне!"],
+  facts:["Мёд не портится: в гробницах Египта находили мёд, который всё ещё съедобен.","Земля летит вокруг Солнца со скоростью около 30 километров в секунду.","Сердце человека за жизнь бьётся более трёх миллиардов раз."],
+  thanks:["Не за что!","Всегда к вашим услугам.","Пожалуйста!"], fine:["Отлично, все системы в норме. А вы?","Всё превосходно!"],
+  stop:"Хорошо, молчу.", noKey:"Не понял. Добавьте ключ Claude в настройках, и я отвечу на любой вопрос.",
+  aiErr:"Не удалось связаться с Claude: ", micDenied:"Нет доступа к микрофону.",
+  noSR:"Браузер не поддерживает распознавание речи. Используйте Chrome или Edge (текстовый ввод работает).",
+  wikiNone:"Ничего не нашёл об этом.", wikiErr:"Не удалось подключиться к Википедии.",
+  rate:"1 {0} примерно {1} сум", rateErr:"Не удалось получить курс.",
+  battery:"Заряд батареи {0} процентов{1}", charging:", идёт зарядка", noBattery:"На этом устройстве нет данных о батарее.",
+  noteSaved:"Записал: {0}", noteEmpty:"Заметок нет.", notesRead:"Ваши заметки: {0}", notesCleared:"Заметки удалены.",
+  heads:"Выпал орёл", tails:"Выпала решка", dice:"Кубик: {0}", random:"Случайное число: {0}",
+  holoShow:"Голограмма: {0}", holoColor:"Цвет изменён.", spinOn:"Голограмма вращается.", spinOff:"Вращение остановлено.", zoomIn:"Приблизил.", zoomOut:"Отдалил.",
+  langSet:"Хорошо, говорю по-русски.", fullscreen:"Полный экран.",
+  shapes:{core:"Ядро Джарвиса",globe:"Земля",cube:"Куб",pyramid:"Пирамида",torus:"Тор",dna:"ДНК",heart:"Сердце",atom:"Атом",galaxy:"Галактика",saturn:"Сатурн"},
+  days:["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"],
+  months:["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"],
+  wcode:{0:"ясно",1:"в основном ясно",2:"переменная облачность",3:"пасмурно",45:"туман",48:"туман",51:"морось",61:"дождь",63:"дождь",65:"сильный дождь",71:"снег",73:"снег",75:"сильный снег",80:"ливень",95:"гроза"},
+  units:{s:"секунд",m:"минут",h:"часов"}, cur:{usd:"доллар",eur:"евро",rub:"рубль"} },
+en:{ speech:"en-US", fallbackSpeech:"en-US",
+  ready:"Ready", listening:"Listening", thinking:"Thinking", speaking:"Speaking", lockedState:"Locked",
+  input:"Type a command…", inputLocked:"Secret phrase…", send:"Send",
+  hello:"Hello, {0}! Jarvis at your service.", helloAnon:"Hello! I'm Jarvis. How can I help?",
+  greet:["Hello! I'm listening.","Hi there! At your service."],
+  lockedMsg:"System locked. I only obey my owner. Say or type the passphrase.",
+  unlocked:"Welcome back, {0}. System unlocked.", wrong:"Wrong passphrase. Attempts left: {0}.", tooMany:"Too many failures. Wait {0} seconds.",
+  nowLocked:"System locked.", ownerSaved:"Owner saved. I'll obey only you now.", ownerRemoved:"Owner removed. Anyone can use me now.",
+  gNew:"Set up owner", gNewText:"To make Jarvis obey only you, enter your name and a secret phrase (4+ letters, 2–3 words works best). You can unlock by voice or typing.",
+  gName:"Your name", gPass:"Secret phrase", gPass2:"Repeat phrase", gSave:"Save", gSkip:"Not now", gCancel:"Cancel",
+  gErrShort:"Phrase is too short.", gErrMatch:"Phrases don't match.", gErrCons:"Phrase is too simple — add more words.",
+  bannerLocked:"🔒 Locked — type the passphrase or say it.", unlock:"Unlock",
+  who:"I'm Jarvis — a holographic voice assistant that obeys only you. Time, weather, rates, Wikipedia, math, timers, notes and 3D holograms.",
+  help:"Try: \"what time is it\", \"weather\", \"dollar rate\", \"who is Albert Einstein\", \"5 plus 7\", \"timer 2 minutes\", \"note buy milk\", \"my notes\", \"show the heart hologram\", \"color red\", \"lock\".",
+  time:"It's {0}:{1}", date:"Today is {0}", opening:"Opening {0}", searching:"Searching for \"{0}\"", noQuery:"What should I search for?",
+  calc:"The answer is {0}", calcErr:"I couldn't calculate that.", timerSet:"Timer set for {0}", timerDone:"Time's up!", remind:"Reminder: {0}",
+  weatherWait:"Checking the weather…", weather:"It's {0} degrees, {1}. Today {3} to {2}.", weatherErr:"Couldn't get the weather. Please allow location.",
+  jokes:["Why do programmers prefer dark mode? Because light attracts bugs.","I told my computer I needed a break. It went to sleep."],
+  facts:["Honey never spoils: edible honey was found in ancient Egyptian tombs.","Earth moves around the Sun at roughly 30 kilometres per second.","A human heart beats more than three billion times in a lifetime."],
+  thanks:["You're welcome!","Always at your service.","Anytime!"], fine:["All systems nominal. And you?","Doing great!"],
+  stop:"Okay, quiet now.", noKey:"I didn't get that. Add a Claude API key in settings and I can answer anything.",
+  aiErr:"Couldn't reach Claude: ", micDenied:"Microphone access denied.",
+  noSR:"This browser has no speech recognition. Use Chrome or Edge (typing still works).",
+  wikiNone:"I found nothing about that.", wikiErr:"Couldn't reach Wikipedia.",
+  rate:"1 {0} is about {1} soum", rateErr:"Couldn't get the rate.",
+  battery:"Battery is at {0} percent{1}", charging:", charging", noBattery:"No battery info on this device.",
+  noteSaved:"Noted: {0}", noteEmpty:"No notes.", notesRead:"Your notes: {0}", notesCleared:"Notes cleared.",
+  heads:"Heads", tails:"Tails", dice:"Dice: {0}", random:"Random number: {0}",
+  holoShow:"Hologram: {0}", holoColor:"Colour changed.", spinOn:"Hologram is spinning.", spinOff:"Spin stopped.", zoomIn:"Zoomed in.", zoomOut:"Zoomed out.",
+  langSet:"Okay, switching to English.", fullscreen:"Fullscreen.",
+  shapes:{core:"Jarvis core",globe:"Earth",cube:"Cube",pyramid:"Pyramid",torus:"Torus",dna:"DNA",heart:"Heart",atom:"Atom",galaxy:"Galaxy",saturn:"Saturn"},
+  days:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+  months:["January","February","March","April","May","June","July","August","September","October","November","December"],
+  wcode:{0:"clear sky",1:"mostly clear",2:"partly cloudy",3:"overcast",45:"fog",48:"fog",51:"drizzle",61:"rain",63:"rain",65:"heavy rain",71:"snow",73:"snow",75:"heavy snow",80:"showers",95:"thunderstorm"},
+  units:{s:"seconds",m:"minutes",h:"hours"}, cur:{usd:"dollar",eur:"euro",rub:"ruble"} }
 };
+let lang = store.get("jv_lang","uz"); if(!L[lang]) lang="uz";
+const t = (k,...a) => String(L[lang][k] ?? L.en[k] ?? k).replace(/\{(\d)\}/g,(_,i)=>a[i]);
+const fmtDur = sec => { const u=L[lang].units,h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
+  return [h&&`${h} ${u.h}`,m&&`${m} ${u.m}`,s&&`${s} ${u.s}`].filter(Boolean).join(" "); };
 
-/* ------------------------------------------------------------------ *
- *  Буйруқларни қайта ишлаш
- * ------------------------------------------------------------------ */
-const WAKE = ["жарвис","джарвис","жарвиз","ярвис","jarvis","jarviz","djarvis","jarvys","жорвис","жарвес"];
+/* ------------------------- матнни нормаллаштириш ------------------------- */
+const FOLD = {"ў":"у","қ":"к","ғ":"г","ҳ":"х","ё":"е","ъ":"","ь":""};
+const fold = s => String(s).toLowerCase().replace(/[ўқғҳёъь]/g,c=>FOLD[c]).replace(/['’ʻʼ`‘´]/g,"");
+const kwCache = new Map();
+const kw = w => kwCache.get(w) ?? (kwCache.set(w,fold(w)), kwCache.get(w));
+const has = (s,list) => list.some(w => s.includes(kw(w)));
+const tokensOf = s => s.split(/[^a-z0-9а-я]+/).filter(Boolean);
+const tokHas = (tokens,stems) => stems.some(st0 => { const st=kw(st0); return st.endsWith("$") ? tokens.includes(st.slice(0,-1)) : tokens.some(t=>t.startsWith(st)); });
 
-function handleInput(raw){
-  if(!raw) return;
-  let s = raw.toLowerCase().replace(/[.,!?;:«»"]/g," ").replace(/\s+/g," ").trim();
-  const w = WAKE.find(x=>s.includes(x));
-  if($("wake").checked && !w && inputFromVoice){ return; }
-  if(w){ s = s.replace(w,"").trim(); raw = raw.replace(new RegExp(w,"i"),"").trim(); }
-  if(!s){ reply(pick(T[lang].greetReply)); addMsg("me",raw||"…"); return; }
-  addMsg("me",raw);
-  route(s,raw);
-}
-let inputFromVoice=true;
+/* ====================================================================
+ *  3D ҲОЛОГРАММА (соф WebGL, ташқи кутубхонасиз)
+ * ==================================================================== */
+const SHAPES = ["core","globe","cube","pyramid","torus","dna","heart","atom","galaxy","saturn"];
+const SHAPE_WORDS = {
+  core:["yadro","ядро","core","reaktor","реактор","arc$","арк$"],
+  globe:["ер$","ерни","ернинг","ерга","yer$","yerni","yerning","yerga","земл","earth","globe","глобус","dunyo","сайёр","планета"],
+  cube:["куб$","кубни","кубом","cube","kub$","kubni"],
+  pyramid:["пирамид","pyramid","piramida"],
+  torus:["тор$","торус","torus","бублик","bublik","пончик","donut"],
+  dna:["днк","dna","dnk","спирал","helix","геном"],
+  heart:["юрак","yurak","сердц","heart"],
+  atom:["атом","atom","молекул","molekul"],
+  galaxy:["галактик","galakt","galax","космос","kosmos","cosmos","юлдуз","yulduz","звезд","star$","stars$"],
+  saturn:["сатурн","saturn"]
+};
+const COLORS = { cyan:[.15,.89,1], green:[.25,1,.55], gold:[1,.76,.2], purple:[.72,.45,1], white:[.92,.97,1], red:[1,.28,.32] };
+const COLOR_WORDS = {
+  cyan:["кук","kok","синий","синяя","голуб","blue","cyan"], red:["кизил","qizil","красн","red"], green:["яшил","yashil","зелен","green"],
+  gold:["олтин","oltin","сарик","sariq","золот","жёлт","желт","gold","yellow","orange"], purple:["бинафша","binafsha","фиолет","purple","violet"], white:["ок$","oq$","белый","белая","white"]
+};
+const SHAPE_COLOR = [.15,.89,1];
 
-async function route(s,raw){
-  const t=T[lang];
-  setState("thinking");
+const Holo = (() => {
+  const cv = $("holo");
+  const N = (innerWidth < 640 ? 3200 : 6500);
+  const rnd = Math.random;
+  const pi2 = Math.PI*2;
 
-  // тўхтатиш
-  if(has(s,["тўхта","тухта","жим бўл","жим бул","жим тур","stop","стоп","хватит","замолчи","jim","to'xta","toxta"])){
-    speechSynthesis.cancel(); speaking=false; setState(active?"listening":"idle"); addMsg("bot",t.stop); return;
+  /* --- матрица ёрдамчилари (устунлар бўйича) --- */
+  const M = {
+    id(){ return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]); },
+    mul(a,b){ const o=new Float32Array(16); for(let c=0;c<4;c++)for(let r=0;r<4;r++){ let s=0; for(let k=0;k<4;k++) s+=a[k*4+r]*b[c*4+k]; o[c*4+r]=s; } return o; },
+    persp(f,a,n,fa){ const q=1/Math.tan(f/2), o=new Float32Array(16); o[0]=q/a; o[5]=q; o[10]=(fa+n)/(n-fa); o[11]=-1; o[14]=2*fa*n/(n-fa); return o; },
+    tr(x,y,z){ const o=M.id(); o[12]=x; o[13]=y; o[14]=z; return o; },
+    rx(a){ const c=Math.cos(a),s=Math.sin(a),o=M.id(); o[5]=c;o[6]=s;o[9]=-s;o[10]=c; return o; },
+    ry(a){ const c=Math.cos(a),s=Math.sin(a),o=M.id(); o[0]=c;o[2]=-s;o[8]=s;o[10]=c; return o; },
+    rz(a){ const c=Math.cos(a),s=Math.sin(a),o=M.id(); o[0]=c;o[1]=s;o[4]=-s;o[5]=c; return o; }
+  };
+
+  /* --- шакл генераторлари: N та нуқта, радиус ≈ 1 --- */
+  const unit = () => { const z=rnd()*2-1, a=rnd()*pi2, r=Math.sqrt(1-z*z); return [r*Math.cos(a), z, r*Math.sin(a)]; };
+  const fill = fn => { const a=new Float32Array(N*3); for(let i=0;i<N;i++){ const p=fn(i,i/N); a[i*3]=p[0]; a[i*3+1]=p[1]; a[i*3+2]=p[2]; } return a; };
+  const rot = (p,ax,ang) => { const c=Math.cos(ang), s=Math.sin(ang), [x,y,z]=p;
+    return ax==="x" ? [x, y*c-z*s, y*s+z*c] : ax==="y" ? [x*c+z*s, y, -x*s+z*c] : [x*c-y*s, x*s+y*c, z]; };
+  const land = p => Math.sin(p[0]*3.1+1)*Math.sin(p[1]*2.6)+0.7*Math.sin(p[2]*3.7+2)+0.35*Math.sin((p[0]+p[1])*5) > 0.35;
+  const heartPt = () => { const t=rnd()*pi2, ph=Math.acos(rnd()*2-1), s=Math.sin(ph);
+    return [16*Math.pow(Math.sin(t),3)*s/17, (13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))*s/17+0.05, 7*Math.cos(ph)/17*1.2]; };
+  const edgePts = (pts,edges,tt) => { const e=edges[Math.floor(rnd()*edges.length)], a=pts[e[0]], b=pts[e[1]];
+    return [a[0]+(b[0]-a[0])*tt, a[1]+(b[1]-a[1])*tt, a[2]+(b[2]-a[2])*tt]; };
+
+  const GEN = {
+    core: () => fill((i,f) => {
+      if(f<.32) return unit();
+      if(f<.50){ const u=unit(); return [u[0]*.58,u[1]*.58,u[2]*.58]; }
+      if(f<.72){ const a=rnd()*pi2; return [1.15*Math.cos(a), (rnd()-.5)*.06, 1.15*Math.sin(a)]; }
+      if(f<.90){ const a=rnd()*pi2, p=[.85*Math.cos(a),(rnd()-.5)*.06,.85*Math.sin(a)]; return rot(p,"x",1.2); }
+      const u=unit(); return [u[0]*.2,u[1]*.2,u[2]*.2];
+    }),
+    globe: () => fill((i,f) => {
+      if(f<.38){ const lat=(Math.floor(rnd()*11)-5)*Math.PI/12, lon=rnd()*pi2, c=Math.cos(lat); return [c*Math.cos(lon), Math.sin(lat), c*Math.sin(lon)]; }
+      if(f<.52){ const lon=Math.floor(rnd()*12)*Math.PI/6, lat=(rnd()-.5)*Math.PI, c=Math.cos(lat); return [c*Math.cos(lon), Math.sin(lat), c*Math.sin(lon)]; }
+      if(f<.94){ for(let k=0;k<12;k++){ const u=unit(); if(land(u)) return u; } return unit(); }
+      const u=unit(); return [u[0]*1.1,u[1]*1.1,u[2]*1.1];
+    }),
+    cube: () => { const h=.8, P=[], E=[]; for(let i=0;i<8;i++) P.push([(i&1?h:-h),(i&2?h:-h),(i&4?h:-h)]);
+      for(let i=0;i<8;i++) for(let b=1;b<8;b<<=1) if(!(i&b)) E.push([i,i|b]);
+      return fill((i,f) => { if(f<.55) return edgePts(P,E,rnd());
+        const p=[(rnd()*2-1)*h,(rnd()*2-1)*h,(rnd()*2-1)*h], ax=Math.floor(rnd()*3); p[ax]=rnd()<.5?-h:h;
+        const o=(ax+1+Math.floor(rnd()*2))%3; p[o]=Math.round(p[o]/(h/2))*(h/2); return p; }); },
+    pyramid: () => { const P=[[-.85,-.7,-.85],[.85,-.7,-.85],[.85,-.7,.85],[-.85,-.7,.85],[0,.95,0]], E=[[0,1],[1,2],[2,3],[3,0],[0,4],[1,4],[2,4],[3,4]];
+      return fill((i,f) => { if(f<.55) return edgePts(P,E,rnd());
+        const k=Math.floor(rnd()*4), a=P[k], b=P[(k+1)%4], c=P[4]; let u=rnd(), v=rnd(); if(u+v>1){u=1-u;v=1-v;}
+        const p=[a[0]+(b[0]-a[0])*u+(c[0]-a[0])*v, a[1]+(b[1]-a[1])*u+(c[1]-a[1])*v, a[2]+(b[2]-a[2])*u+(c[2]-a[2])*v];
+        if(f>.8) p[1]=Math.round(p[1]*3)/3; return p; }); },
+    torus: () => fill((i,f) => { let u=rnd()*pi2, v=rnd()*pi2; if(f<.5) u=Math.floor(rnd()*28)/28*pi2; else if(f<.7) v=Math.floor(rnd()*10)/10*pi2;
+      const R=.75, r=.3; return [(R+r*Math.cos(v))*Math.cos(u), r*Math.sin(v)*1.0, (R+r*Math.cos(v))*Math.sin(u)]; }),
+    dna: () => fill((i,f) => { const turns=3.2;
+      if(f<.72){ const s=f<.36?0:Math.PI, y=(rnd()*2-1), a=y*turns*Math.PI+s; return [.5*Math.cos(a), y*1.15, .5*Math.sin(a)]; }
+      const y=(Math.floor(rnd()*22)/21*2-1), a=y*turns*Math.PI, k=rnd()*2-1; return [.5*Math.cos(a)*k, y*1.15, .5*Math.sin(a)*k]; }),
+    heart: () => fill(() => heartPt()),
+    atom: () => fill((i,f) => {
+      if(f<.22){ const u=unit(), r=.2*Math.cbrt(rnd()); return [u[0]*r,u[1]*r,u[2]*r]; }
+      const o=Math.floor((f-.22)/.26); if(o>2) return unit().map(x=>x*.1);
+      const a=rnd()*pi2, p=[1.1*Math.cos(a), (rnd()-.5)*.03, .5*Math.sin(a)];
+      if(f>.9){ const e=(o+1)*2.1, q=[1.1*Math.cos(e)+(rnd()-.5)*.08,(rnd()-.5)*.08,.5*Math.sin(e)+(rnd()-.5)*.08]; return rot(rot(q,"z",o*1.05),"x",o*.6); }
+      return rot(rot(p,"z",o*1.05),"x",o*.6); }),
+    galaxy: () => fill((i,f) => { if(f<.12){ const u=unit(), r=.25*Math.cbrt(rnd()); return [u[0]*r,u[1]*r*.6,u[2]*r]; }
+      const arm=Math.floor(rnd()*3), r=Math.pow(rnd(),.65)*1.3, a=r*3.2+arm*pi2/3+(rnd()-.5)*.5*(1-r*.4);
+      return [r*Math.cos(a), (rnd()-.5)*.12*(1.2-r*.5), r*Math.sin(a)]; }),
+    saturn: () => fill((i,f) => { if(f<.4){ const u=unit(); return [u[0]*.55,u[1]*.55,u[2]*.55]; }
+      const a=rnd()*pi2, r=.78+Math.pow(rnd(),.8)*.55; if(r>1.0&&r<1.05) return rot([.8*Math.cos(a),0,.8*Math.sin(a)],"z",.42);
+      return rot([r*Math.cos(a),(rnd()-.5)*.012,r*Math.sin(a)],"z",.42); })
+  };
+  const targets = {};
+  const getTarget = name => targets[name] || (targets[name] = GEN[name]());
+
+  /* --- ҳолат --- */
+  const cur = new Float32Array(getTarget("core"));
+  let tgt = getTarget("core"), shape = "core";
+  const seed = new Float32Array(N); for(let i=0;i<N;i++) seed[i]=rnd();
+  const col = SHAPE_COLOR.slice(), colT = SHAPE_COLOR.slice();
+  let themeColor = "cyan", st = "idle", locked = false;
+  let amp = 0, kick = 0, glitch = 0, rotY = 0, rotX = -.22, dragging = false, zoom = 1, autoSpin = true, tNow = 0;
+  const api = { webgl:true };
+
+  /* --- ҳалқалар ва пойдевор (статик нуқталар) --- */
+  const ringPts = (n,R,y=0,jit=0) => { const a=new Float32Array(n*3); for(let i=0;i<n;i++){ const t=i/n*pi2; a[i*3]=R*Math.cos(t)+(rnd()-.5)*jit; a[i*3+1]=y+(rnd()-.5)*jit; a[i*3+2]=R*Math.sin(t)+(rnd()-.5)*jit; } return a; };
+  const rings = [ {p:ringPts(260,1.55,0,.01), tilt:[.9,0], sp:.5}, {p:ringPts(300,1.8,0,.01), tilt:[-.5,.4], sp:-.35} ];
+  const baseP = new Float32Array([...ringPts(240,.9,-1.25), ...ringPts(300,1.25,-1.25), ...ringPts(360,1.62,-1.25)]);
+
+  /* --- WebGL --- */
+  let gl = null;
+  try{ gl = cv.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:true}) || cv.getContext("experimental-webgl"); }catch{}
+  let prog, loc = {}, bufMain, bufSeed, ringBufs = [], baseBuf, ringSeed, baseSeed;
+  const VS = `attribute vec3 aPos; attribute float aSeed;
+    uniform mat4 uMVP; uniform float uTime,uAmp,uAmpK,uSize,uPx,uScan,uGlitch;
+    varying float vA; varying float vScan;
+    void main(){
+      vec3 p=aPos;
+      float n=sin(aSeed*43.7+uTime*3.0)*0.5+0.5;
+      p+=normalize(p+vec3(0.0001))*uAmp*uAmpK*0.16*n;
+      float g=step(0.965,fract(sin(floor(uTime*14.0)*91.7)*437.5))*uGlitch;
+      p.x+=g*0.18*sin(p.y*18.0+uTime*70.0);
+      vec4 pos=uMVP*vec4(p,1.0);
+      gl_Position=pos;
+      float sc=fract(p.y*0.42-uTime*uScan);
+      vScan=uScan>0.0?smoothstep(0.94,1.0,sc):0.0;
+      vA=0.5+0.5*n;
+      gl_PointSize=max(1.0,uPx*uSize*(1.0+uAmp*uAmpK*0.6+vScan*1.4)/pos.w);
+    }`;
+  const FS = `precision mediump float; uniform vec3 uColor; uniform float uFlicker,uAlpha; varying float vA; varying float vScan;
+    void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
+      float a=smoothstep(0.5,0.05,d);
+      vec3 col=mix(uColor,vec3(1.0),vScan*0.85+a*0.2);
+      gl_FragColor=vec4(col*(a*vA*uFlicker*uAlpha),a*vA*uFlicker*uAlpha); }`;
+  const sh = (type,src) => { const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const mkBuf = (data,usage) => { const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,data,usage||gl.STATIC_DRAW); return b; };
+  const seeds = n => { const a=new Float32Array(n); for(let i=0;i<n;i++) a[i]=rnd(); return a; };
+  if(gl){
+    try{
+      prog = gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(prog);
+      if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+      gl.useProgram(prog);
+      ["uMVP","uTime","uAmp","uAmpK","uSize","uPx","uScan","uGlitch","uColor","uFlicker","uAlpha"].forEach(n=>loc[n]=gl.getUniformLocation(prog,n));
+      loc.aPos = gl.getAttribLocation(prog,"aPos"); loc.aSeed = gl.getAttribLocation(prog,"aSeed");
+      bufMain = mkBuf(cur,gl.DYNAMIC_DRAW); bufSeed = mkBuf(seed);
+      rings.forEach(r=>{ r.buf=mkBuf(r.p); r.seed=mkBuf(seeds(r.p.length/3)); });
+      baseBuf = mkBuf(baseP); baseSeed = mkBuf(seeds(baseP.length/3));
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE); gl.disable(gl.DEPTH_TEST);
+    }catch(e){ console.warn("WebGL init:",e); gl = null; }
   }
-  // таймер
-  const tm = s.match(/(\d+)\s*(сония|секунд|sekund|soniya|second|sec|дақиқа|дакика|минут|daqiqa|minute|min|соат|час|soat|hour)/);
-  if(has(s,["таймер","timer","taymer","секундомер"]) && tm){
-    const n=+tm[1], u=tm[2];
-    const mult = /сония|секунд|sekund|soniya|sec/.test(u)?1 : /соат|час|soat|hour/.test(u)?3600 : 60;
-    const secs=n*mult;
-    setTimeout(()=>{ beep(); reply(t.timerDone); }, secs*1000);
-    return reply(t.timerSet(secs));
+  const c2d = gl ? null : cv.getContext("2d");
+  if(!gl){ api.webgl=false; $("fallbackMsg").style.display="block"; $("fallbackMsg").textContent="WebGL йўқ — соддалаштирилган 3D"; }
+
+  function draw(buf,sbuf,count,mvp,o){
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf); gl.enableVertexAttribArray(loc.aPos); gl.vertexAttribPointer(loc.aPos,3,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,sbuf); gl.enableVertexAttribArray(loc.aSeed); gl.vertexAttribPointer(loc.aSeed,1,gl.FLOAT,false,0,0);
+    gl.uniformMatrix4fv(loc.uMVP,false,mvp);
+    gl.uniform1f(loc.uAmpK,o.ampK); gl.uniform1f(loc.uSize,o.size); gl.uniform1f(loc.uScan,o.scan); gl.uniform1f(loc.uAlpha,o.alpha);
+    gl.drawArrays(gl.POINTS,0,count);
   }
-  // соат
-  if(has(s,["соат неча","вақт нечи","вақт қанча","соатни айт","время","который час","сколько времени","what time","the time","soat nech","vaqt nech","soat qancha","нечи соат","неча соат"])){
-    const d=new Date(); return reply(t.time(d.getHours(),d.getMinutes()));
+
+  function resize(){
+    const dpr = Math.min(devicePixelRatio||1,2), w = cv.clientWidth, h = cv.clientHeight;
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+    return dpr;
   }
-  // сана
-  if(has(s,["сана","бугун қайси","бугун нима","дата","какое число","какой сегодня","what date","today's date","what day","sana","bugun qaysi","қайси кун","какой день"])){
-    const d=new Date();
-    return reply(t.date(`${d.getDate()} ${t.months[d.getMonth()]}, ${t.days[d.getDay()]}`));
-  }
-  // об-ҳаво
-  if(has(s,["об-ҳаво","обҳаво","ob-havo","obhavo","ob havo","об ҳаво","погода","weather","ҳаво қанд","havo qanday"])){
-    return weather();
-  }
-  // ҳазил
-  if(has(s,["ҳазил","латифа","hazil","latifa","шутк","анекдот","joke","funny"])) return reply(pick(t.jokes));
-  // ким сан
-  if(has(s,["кимсан","ким сан","сен кимсан","ты кто","who are you","kimsan","кто ты","нима қила оласан","что ты умеешь","what can you do","nima qila olasan"])) return reply(t.who);
-  // салом
-  if(/^(салом|ассалому алайкум|привет|здравствуй|hello|hi|hey|salom|assalomu alaykum)\b/.test(s)) return reply(pick(t.greetReply));
 
-  // қидирув: ютуб / гугл
-  if(has(s,["қидир","изла","qidir","найди","поищи","поиск","search"])){
-    let query = s.replace(/(ютуб\w*|youtube\w*|yutub\w*|гугл\w*|google\w*|қидир\w*|изла\w*|qidir\w*|найди|поищи|поиск|search( for)?|да|бўйича|в)/g," ").replace(/\s+/g," ").trim();
-    if(!query) return reply(t.noQuery);
-    const yt = has(s,siteWords.youtube);
-    const url = yt ? "https://www.youtube.com/results?search_query="+encodeURIComponent(query)
-                   : "https://www.google.com/search?q="+encodeURIComponent(query);
-    openUrl(url);
-    return reply(t.searching(query));
-  }
-  // сайт очиш
-  if(has(s,["оч","оч,","ochib","och","открой","открыть","запусти","open","launch","ишга туширгин"])){
-    for(const [k,words] of Object.entries(siteWords)){
-      if(has(s,words)){ openUrl(sites[k][0]); return reply(t.opening(sites[k][1])); }
-    }
-  }
-  // калькулятор
-  const calc = tryCalc(s);
-  if(calc!==null) return reply(t.calc(calc));
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(.05,(now-last)/1000); last = now; tNow += dt;
+    const dpr = resize();
+    // зарралар мақсад томон силжийди
+    for(let i=0;i<N;i++){ const k = Math.min(1, dt*(1.6+seed[i]*3.4)), j=i*3;
+      cur[j]+=(tgt[j]-cur[j])*k; cur[j+1]+=(tgt[j+1]-cur[j+1])*k; cur[j+2]+=(tgt[j+2]-cur[j+2])*k; }
+    // амплитуда
+    kick = Math.max(0, kick - dt*2.2);
+    const base = st==="speaking" ? .45+.25*Math.sin(tNow*9)*Math.sin(tNow*2.7) : st==="listening" ? .22+.1*Math.sin(tNow*4.5) : st==="thinking" ? .3+.12*Math.sin(tNow*7) : .06+.03*Math.sin(tNow*1.4);
+    amp += ((base+kick*.6) - amp)*Math.min(1,dt*10);
+    glitch = Math.max(0, glitch - dt*1.4);
+    // ранг
+    const want = locked ? COLORS.red : st==="thinking" ? [1,.74,.2] : st==="listening" ? colorTheme().map((v,i)=>v*.6+[.3,1,.6][i]*.4) : colorTheme();
+    for(let i=0;i<3;i++){ colT[i]=want[i]; col[i]+=(colT[i]-col[i])*Math.min(1,dt*5); }
+    // айланиш
+    if(!dragging && autoSpin) rotY += dt*(locked?.15:.35);
+    const aspect = cv.width/Math.max(1,cv.height);
+    const proj = M.persp(.8,aspect,.1,50);
+    const view = M.mul(M.tr(0,-.05,-3.9/zoom), M.rx(rotX));
+    const pulse = 1 + amp*.1;
+    const sc = M.id(); sc[0]=sc[5]=sc[10]=pulse;
+    const model = M.mul(M.tr(0,.12,0), M.mul(M.ry(rotY), sc));
+    const flick = (Math.random()<.015 ? .7 : 1) * (.94+.06*Math.sin(tNow*53));
 
-  // Claude
-  const key=$("apikey").value.trim();
-  if(key) return askClaude(raw,key);
-
-  // калитсиз: Google'да қидириб беришни таклиф қиламиз
-  reply(t.noKey);
-}
-
-function openUrl(url){ window.open(url,"_blank","noopener"); }
-function beep(){
-  try{
-    const c=new (window.AudioContext||window.webkitAudioContext)(); const o=c.createOscillator(), g=c.createGain();
-    o.connect(g); g.connect(c.destination); o.frequency.value=880; g.gain.value=.2; o.start();
-    setTimeout(()=>{o.stop();c.close();},500);
-  }catch{}
-}
-
-function tryCalc(s){
-  let e=s.replace(/,/g,".")
-    .replace(/плюс|қўш(?:ув)?|qo'?sh|plus|\+/g,"+")
-    .replace(/минус|айир|ayir|minus|-/g,"-")
-    .replace(/кўпайтир(?:иш)?|умнож\w*|ko'?paytir|times|multiplied by|multiply|умножить на|[x×х*]/g,"*")
-    .replace(/бўл(?:ин)?|дели(?:ть)?|bo'?l|divided by|divide|÷|\//g,"/")
-    .replace(/[^0-9+\-*/.() ]/g," ").replace(/\s+/g," ").trim();
-  if(!/^\d/.test(e) || !/[+\-*/]/.test(e) || !/\d\s*$/.test(e)) return null;
-  if(!/^[0-9+\-*/.() ]+$/.test(e)) return null;
-  try{
-    const r = Function('"use strict";return ('+e+')')();
-    if(typeof r!=="number"||!isFinite(r)) return T[lang].calcErr;
-    return Math.round(r*1e6)/1e6;
-  }catch{ return T[lang].calcErr; }
-}
-
-async function weather(){
-  const t=T[lang];
-  addMsg("sys",t.weatherWait);
-  try{
-    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
-    const {latitude:la,longitude:lo}=pos.coords;
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code`);
-    const j = await r.json();
-    const temp = Math.round(j.current.temperature_2m), code=j.current.weather_code;
-    const desc = t.wcode[code] ?? t.wcode[Object.keys(t.wcode).map(Number).filter(k=>k<=code).pop()] ?? "";
-    reply(t.weather(temp,desc));
-  }catch{ reply(t.weatherErr); }
-}
-
-async function askClaude(text,key){
-  const t=T[lang];
-  const names={uz:"Uzbek (use Cyrillic script)",ru:"Russian",en:"English"};
-  history.push({role:"user",content:text});
-  history=history.slice(-12);
-  try{
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "content-type":"application/json","x-api-key":key,
-        "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"
-      },
-      body:JSON.stringify({
-        model:"claude-haiku-4-5-20251001", max_tokens:400,
-        system:`You are Jarvis, a friendly, witty voice assistant. Reply in ${names[lang]} unless the user speaks another language. Your answer is read aloud, so keep it short (1-3 sentences), conversational, with no markdown, lists, emoji or URLs.`,
-        messages:history
-      })
-    });
-    const j=await res.json();
-    if(!res.ok) throw new Error(j.error?.message||res.status);
-    const ans=j.content.map(c=>c.text||"").join("").trim();
-    history.push({role:"assistant",content:ans});
-    reply(ans);
-  }catch(err){
-    history.pop();
-    reply(t.aiErr+err.message);
-  }
-}
-
-/* ------------------------------------------------------------------ *
- *  Матн орқали киритиш
- * ------------------------------------------------------------------ */
-function submitText(){
-  const v=$("txt").value.trim(); if(!v) return; $("txt").value="";
-  inputFromVoice=false; handleInput(v); inputFromVoice=true;
-}
-$("send").onclick=submitText;
-$("txt").addEventListener("keydown",e=>{ if(e.key==="Enter") submitText(); });
-
-/* ------------------------------------------------------------------ *
- *  Созламалар
- * ------------------------------------------------------------------ */
-$("lang").value=lang;
-$("wake").checked = store.get("jv_wake","0")==="1";
-$("mute").checked = store.get("jv_mute","0")==="1";
-$("rate").value   = store.get("jv_rate","1");
-$("apikey").value = store.get("jv_key","");
-$("lang").onchange = ()=>{ lang=$("lang").value; store.set("jv_lang",lang); document.documentElement.lang=lang; setState(state); if(rec){ stopRecognition(); startRecognition(); } };
-$("wake").onchange = ()=>store.set("jv_wake",$("wake").checked?"1":"0");
-$("mute").onchange = ()=>{ store.set("jv_mute",$("mute").checked?"1":"0"); if($("mute").checked) speechSynthesis.cancel(); };
-$("rate").onchange = ()=>store.set("jv_rate",$("rate").value);
-$("apikey").onchange = ()=>store.set("jv_key",$("apikey").value.trim());
-$("clear").onclick = ()=>{ history=[]; $("log").innerHTML=""; };
-
-function updateNet(){ $("netStatus").textContent = navigator.onLine ? "● онлайн" : "○ оффлайн"; }
-addEventListener("online",updateNet); addEventListener("offline",updateNet); updateNet();
-
-if(!SR) showWarn(T[lang].noSR);
-setState("idle");
-addMsg("bot",T[lang].hello);
-
-/* ------------------------------------------------------------------ *
- *  Орб анимацияси
- * ------------------------------------------------------------------ */
-(function(){
-  const cv=$("orb"), c=cv.getContext("2d"), W=cv.width, H=cv.height, cx=W/2, cy=H/2;
-  let amp=0, t0=0;
-  function frame(ts){
-    const t=ts/1000; t0=t;
-    const target = state==="speaking" ? .55+.35*Math.sin(t*9)*Math.sin(t*3.3)
-                 : state==="listening"? .25+.12*Math.sin(t*4)
-                 : state==="thinking" ? .3
-                 : .08+.03*Math.sin(t*1.5);
-    amp += (target-amp)*.12;
-    c.clearRect(0,0,W,H);
-    const base=W*.2;
-    // ялтироқ нур
-    const g=c.createRadialGradient(cx,cy,base*.2,cx,cy,base*(2.1+amp));
-    g.addColorStop(0,"rgba(39,227,255,.55)"); g.addColorStop(.5,"rgba(39,227,255,.12)"); g.addColorStop(1,"rgba(39,227,255,0)");
-    c.fillStyle=g; c.beginPath(); c.arc(cx,cy,base*(2.1+amp),0,7); c.fill();
-    // ҳалқалар
-    const spin = state==="thinking" ? 2.4 : 0.5;
-    for(let i=0;i<4;i++){
-      const r=base*(1.05+i*.32)+amp*base*.25*(i+1)*.5;
-      c.strokeStyle=`rgba(39,227,255,${.75-i*.15})`; c.lineWidth=2.2-i*.3;
-      c.setLineDash([ [60,18],[22,14],[90,30],[8,10] ][i]);
-      c.lineDashOffset = -t*spin*(i%2?-40:40)*(i+1)*.5;
-      c.beginPath(); c.arc(cx,cy,r,0,Math.PI*2); c.stroke();
-    }
-    c.setLineDash([]);
-    // марказий ядро
-    const core=c.createRadialGradient(cx,cy,0,cx,cy,base*(1+amp*.5));
-    core.addColorStop(0,"#eaffff"); core.addColorStop(.35,"#27e3ff"); core.addColorStop(1,"rgba(10,155,181,.15)");
-    c.fillStyle=core; c.beginPath(); c.arc(cx,cy,base*(.85+amp*.45),0,7); c.fill();
-    // овоз тўлқини
-    if(state==="speaking"||state==="listening"){
-      c.strokeStyle="rgba(234,255,255,.85)"; c.lineWidth=2; c.beginPath();
-      for(let x=-base*.7;x<=base*.7;x+=4){
-        const y=Math.sin(x*.09+t*10)*amp*base*.45*Math.cos(x/(base*.7)*1.5);
-        x===-base*.7?c.moveTo(cx+x,cy+y):c.lineTo(cx+x,cy+y);
-      }
-      c.stroke();
+    if(gl){
+      gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(prog);
+      gl.uniform1f(loc.uTime,tNow); gl.uniform1f(loc.uAmp,amp); gl.uniform1f(loc.uGlitch,glitch);
+      gl.uniform1f(loc.uPx, cv.height*.017*(dpr>1?1:1.2)); gl.uniform3f(loc.uColor,col[0],col[1],col[2]); gl.uniform1f(loc.uFlicker,flick);
+      // пойдевор (айланмайди)
+      draw(baseBuf,baseSeed,baseP.length/3,M.mul(proj,M.mul(view,M.ry(tNow*.15))),{ampK:.15,size:.75,scan:0,alpha:.55});
+      // асосий шакл
+      gl.bindBuffer(gl.ARRAY_BUFFER,bufMain); gl.bufferSubData(gl.ARRAY_BUFFER,0,cur);
+      draw(bufMain,bufSeed,N,M.mul(proj,M.mul(view,model)),{ampK:1,size:1,scan:.25,alpha:1});
+      // орбита ҳалқалари
+      rings.forEach(r=>{ const m = M.mul(M.ry(rotY*r.sp*2+tNow*r.sp), M.mul(M.rx(r.tilt[0]), M.rz(r.tilt[1])));
+        draw(r.buf,r.seed,r.p.length/3,M.mul(proj,M.mul(view,M.mul(M.tr(0,.12,0),m))),{ampK:.3,size:.7,scan:0,alpha:.5}); });
+    } else {
+      // 2D захира режими
+      const W=cv.width,H=cv.height; c2d.clearRect(0,0,W,H);
+      const mvp = M.mul(proj,M.mul(view,model)); c2d.fillStyle=`rgb(${col.map(v=>Math.round(v*255)).join(",")})`;
+      for(let i=0;i<N;i+=2){ const x=cur[i*3],y=cur[i*3+1],z=cur[i*3+2];
+        const cw=mvp[3]*x+mvp[7]*y+mvp[11]*z+mvp[15]; if(cw<=0) continue;
+        const sx=(mvp[0]*x+mvp[4]*y+mvp[8]*z+mvp[12])/cw, sy=(mvp[1]*x+mvp[5]*y+mvp[9]*z+mvp[13])/cw;
+        c2d.globalAlpha=.35+.5*seed[i]; c2d.fillRect((sx*.5+.5)*W,(1-(sy*.5+.5))*H,1.6*dpr,1.6*dpr); }
+      c2d.globalAlpha=1;
     }
     requestAnimationFrame(frame);
   }
+  const colorTheme = () => COLORS[themeColor] || COLORS.cyan;
+
+  /* --- бошқарув (мышь / сенсор) --- */
+  let px = 0, py = 0;
+  cv.addEventListener("pointerdown",e=>{ dragging=true; px=e.clientX; py=e.clientY; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove",e=>{ if(!dragging) return; rotY += (e.clientX-px)*.012; rotX = Math.max(-1.2,Math.min(1.2,rotX+(e.clientY-py)*.01)); px=e.clientX; py=e.clientY; });
+  cv.addEventListener("pointerup",()=>dragging=false); cv.addEventListener("pointercancel",()=>dragging=false);
+  cv.addEventListener("wheel",e=>{ e.preventDefault(); zoom = Math.max(.6,Math.min(2.2,zoom*(e.deltaY<0?1.08:.93))); },{passive:false});
+  cv.addEventListener("dblclick",()=>{ if(!locked) api.setShape(SHAPES[(SHAPES.indexOf(shape)+1)%SHAPES.length]); });
+
+  Object.defineProperties(api,{ shape:{get:()=>shape}, color:{get:()=>themeColor} });
+  Object.assign(api,{
+    N,
+    setShape(name){ if(!GEN[name]) return false; shape=name; tgt=getTarget(name); glitch=1; kick=1; return true; },
+    setState(s){ st=s; }, setLocked(v){ locked=v; glitch=1; },
+    setColor(name){ if(COLORS[name]){ themeColor=name; return true; } return false; },
+    colorRGB(){ return locked?COLORS.red:colorTheme(); },
+    kick(v=.6){ kick=Math.min(1.4,kick+v); }, glitchNow(){ glitch=1; },
+    setSpin(v){ autoSpin=!!v; }, zoomBy(f){ zoom=Math.max(.6,Math.min(2.2,zoom*f)); },
+    _debug(){ return {gl:!!gl, amp, st, shape}; }
+  });
   requestAnimationFrame(frame);
+  return api;
 })();
+
+/* ====================================================================
+ *  Овоз чиқариш (TTS), товушлар
+ * ==================================================================== */
+let voices = [], speaking = false, speakToken = 0, AC = null;
+function loadVoices(){ try{ voices = speechSynthesis.getVoices(); }catch{ voices=[]; } fillVoiceSelect(); }
+if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+
+function fillVoiceSelect(){
+  const sel = $("voice"); if(!sel) return;
+  const pref = store.get("jv_voice","");
+  const code = L[lang].speech.slice(0,2), fb = L[lang].fallbackSpeech.slice(0,2);
+  const list = voices.filter(v=>v.lang.toLowerCase().startsWith(code)||v.lang.toLowerCase().startsWith(fb));
+  sel.innerHTML = '<option value="">Автомат</option>' + list.map(v=>`<option value="${v.name.replace(/"/g,"&quot;")}">${v.name} (${v.lang})</option>`).join("");
+  sel.value = list.some(v=>v.name===pref) ? pref : "";
+}
+function pickVoice(){
+  const want = $("voice").value;
+  if(want){ const v=voices.find(v=>v.name===want); if(v) return {voice:v,lang:v.lang}; }
+  const find = c => voices.find(v=>v.lang.replace("_","-").toLowerCase()===c.toLowerCase()) || voices.find(v=>v.lang.toLowerCase().startsWith(c.slice(0,2).toLowerCase()));
+  const v = find(L[lang].speech) || find(L[lang].fallbackSpeech);
+  return v ? {voice:v,lang:v.lang} : {voice:null,lang:L[lang].fallbackSpeech};
+}
+function chunkText(s){
+  const parts = s.match(/[^.!?…\n]+[.!?…]*/g) || [s], out = []; let cur = "";
+  for(const p of parts){ if((cur+p).length > 170 && cur){ out.push(cur.trim()); cur = p; } else cur += p; }
+  if(cur.trim()) out.push(cur.trim()); return out;
+}
+function afterSpeak(){ setState(active?"listening":(locked?"locked":"idle")); if(active) startRecognition(); }
+function stopSpeaking(){
+  speakToken++; try{ speechSynthesis.cancel(); }catch{}
+  if(speaking){ speaking=false; afterSpeak(); }
+}
+function speak(text){
+  return new Promise(resolve=>{
+    const clean = String(text).replace(/\s+/g," ").trim();
+    if($("mute").checked || !("speechSynthesis" in window) || !clean){ setState(active?"listening":(locked?"locked":"idle")); resolve(); return; }
+    try{ speechSynthesis.cancel(); }catch{}
+    const my = ++speakToken, chunks = chunkText(clean), {voice,lang:vl} = pickVoice();
+    speaking = true; setState("speaking"); stopRecognition();
+    let i = 0;
+    const next = () => {
+      if(my !== speakToken){ resolve(); return; }
+      if(i >= chunks.length){ speaking=false; afterSpeak(); resolve(); return; }
+      const txt = chunks[i++], u = new SpeechSynthesisUtterance(txt);
+      if(voice) u.voice = voice; u.lang = vl; u.rate = parseFloat($("rate").value)||1; u.pitch = parseFloat($("pitch").value)||.85;
+      let done = false;
+      const go = () => { if(done) return; done=true; clearTimeout(guard); next(); };
+      u.onend = go; u.onerror = go; u.onboundary = () => Holo.kick(.55);
+      const guard = setTimeout(go, 2000 + txt.length*110);
+      speechSynthesis.speak(u);
+    };
+    next();
+  });
+}
+function chime(kind){
+  if($("mute").checked) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const seq = {on:[660,990], off:[990,660], ok:[520,780,1040], bad:[240,170]}[kind]; let t0 = AC.currentTime;
+    seq.forEach((f,i)=>{ const o=AC.createOscillator(), g=AC.createGain(), s=t0+i*.09;
+      o.type="sine"; o.frequency.value=f; g.gain.setValueAtTime(.0001,s); g.gain.exponentialRampToValueAtTime(.12,s+.02); g.gain.exponentialRampToValueAtTime(.0001,s+.15);
+      o.connect(g); g.connect(AC.destination); o.start(s); o.stop(s+.17); });
+  }catch{}
+}
+
+/* ====================================================================
+ *  Ҳолат, чат, интерфейс
+ * ==================================================================== */
+let state = "idle", active = false, locked = false, history = [];
+function setState(s){
+  state = s; Holo.setState(s === "locked" ? "idle" : s);
+  const label = s==="listening"?L[lang].listening : s==="thinking"?L[lang].thinking : s==="speaking"?L[lang].speaking : s==="locked"?L[lang].lockedState : L[lang].ready;
+  $("state").textContent = label; $("teleL").textContent = "SYS · " + label.toUpperCase();
+}
+function addMsg(cls,text){
+  const d = document.createElement("div"); d.className = "msg "+cls; d.textContent = text;
+  const log = $("log"); log.appendChild(d); log.scrollTop = log.scrollHeight;
+  while(log.children.length > 200) log.removeChild(log.firstChild);
+}
+function showWarn(x){ const w=$("warn"); w.textContent=x; w.style.display=x?"block":"none"; }
+function reply(text, opts={}){ addMsg("bot",text); if(opts.shape) showShape(opts.shape,true); return speak(text); }
+
+function applyTheme(){
+  const [r,g,b] = Holo.colorRGB(); const hex = "#"+[r,g,b].map(v=>Math.round(v*255).toString(16).padStart(2,"0")).join("");
+  document.documentElement.style.setProperty("--cyan",hex);
+}
+function showShape(name,quiet){
+  if(!Holo.setShape(name)) return false;
+  $("holoLabel").textContent = L[lang].shapes[name] + " · 3D";
+  document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("on",c.dataset.s===name));
+  return true;
+}
+function buildChips(){
+  const box = $("chips"); box.innerHTML = "";
+  SHAPES.forEach(s=>{ const b=document.createElement("button"); b.className="chip"+(Holo.shape===s?" on":""); b.dataset.s=s; b.textContent=L[lang].shapes[s];
+    b.onclick=()=>{ if(locked) return; touch(); showShape(s); chime("on"); }; box.appendChild(b); });
+}
+function relabel(){
+  $("sumSettings").textContent = lang==="uz"?"Созламалар ва буйруқлар":lang==="ru"?"Настройки и команды":"Settings & commands";
+  $("cmdHelp").innerHTML = "<b>"+t("help")+"</b>";
+  $("txt").placeholder = locked ? t("inputLocked") : t("input"); $("send").textContent = locked ? t("unlock") : t("send");
+  $("holoLabel").textContent = locked ? "🔒 " + L[lang].lockedState : L[lang].shapes[Holo.shape] + " · 3D";
+  buildChips(); setState(state);
+}
+setInterval(()=>{ const d=new Date(), p=n=>String(n).padStart(2,"0"); $("teleR").textContent = `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; },1000);
+
+/* ====================================================================
+ *  ЭГА ВА ҚУЛФ (фақат эгасига бўйсуниш)
+ * ==================================================================== */
+const TL = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"j","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sh","э":"e","ю":"yu","я":"ya","ы":"i","ў":"o","қ":"k","ғ":"g","ҳ":"h","ё":"e"};
+function normPhrase(s){
+  s = String(s).toLowerCase().replace(/['’ʻʼ`‘´ъь]/g,"").replace(/[а-яёўқғҳ]/g,c=>TL[c]||"");
+  return s.replace(/q/g,"k").replace(/x/g,"h").replace(/w/g,"v").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+}
+const skeleton = n => n.replace(/[aeiouy]/g,"").replace(/(.)\1+/g,"$1");
+const b64e = u => btoa(String.fromCharCode(...u)), b64d = s => Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function hashPhrase(text, saltB64){
+  if(window.crypto && crypto.subtle){
+    const key = await crypto.subtle.importKey("raw",new TextEncoder().encode(text),"PBKDF2",false,["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits({name:"PBKDF2",salt:b64d(saltB64),iterations:100000,hash:"SHA-256"},key,256);
+    return b64e(new Uint8Array(bits));
+  }
+  let h = 2166136261; for(const ch of saltB64+text){ h ^= ch.charCodeAt(0); h = Math.imul(h,16777619); } return "f"+(h>>>0).toString(16);
+}
+let owner = null; try{ owner = JSON.parse(store.get("jv_owner","null")); }catch{}
+let fails = 0, lockUntil = 0, lastActive = Date.now(), lastLockedMsg = 0;
+const touch = () => { lastActive = Date.now(); };
+
+function ownerName(){ return (owner && owner.name) || store.get("jv_ownerName",""); }
+function lockUI(){
+  document.body.classList.toggle("locked",locked);
+  $("lockBadge").textContent = locked ? "🔒 "+L[lang].lockedState : (owner ? "🔓" : "🔓 +");
+  $("txt").type = locked ? "password" : "text";
+  Holo.setLocked(locked); relabel(); applyTheme();
+  if(locked) setState(active?"listening":"locked"); else if(state==="locked") setState("idle");
+}
+function lockNow(silent){
+  if(!owner) return;
+  locked = true; stopSpeaking(); history = []; $("log").innerHTML = ""; $("txt").value = "";
+  addMsg("sys",t("lockedMsg")); lockUI(); chime("off");
+  if(!silent) speak(t("nowLocked"));
+}
+function unlockOK(){
+  locked = false; fails = 0; touch(); lockUI(); Holo.glitchNow(); showShape("core"); chime("ok");
+  $("log").innerHTML = ""; reply(t("unlocked",ownerName()||""));
+}
+async function tryUnlock(texts, src){
+  if(Date.now() < lockUntil){ const s=Math.ceil((lockUntil-Date.now())/1000); if(src!=="voice"||Date.now()-lastLockedMsg>8000){ lastLockedMsg=Date.now(); reply(t("tooMany",s)); } return; }
+  const words = owner.words, cands = new Set();
+  for(const raw of texts){ const w = normPhrase(raw).split(" ").filter(Boolean);
+    if(w.length === words) cands.add(w.join(" "));
+    for(let i=0; i+words<=w.length && cands.size<14; i++) cands.add(w.slice(i,i+words).join(" ")); }
+  let ok = false;
+  for(const c of cands){ if(await hashPhrase(c,owner.salt) === owner.hash){ ok = true; break; } }
+  if(!ok && src==="voice" && owner.hash2){   // овоз таниш хатоларига бардош: унлисиз "скелет" (фақат овоз орқали)
+    for(const c of cands){ if(await hashPhrase(skeleton(c),owner.salt) === owner.hash2){ ok = true; break; } }
+  }
+  if(ok){ unlockOK(); return; }
+  // овозда тасодифий гапларни хато деб санамаймиз — фақат «Жарвис» айтилса ёки ёзилганда
+  const addressed = src!=="voice" || texts.some(x=>WAKE.some(w=>fold(x).includes(w)));
+  if(!addressed) return;
+  fails++; chime("bad");
+  if(fails >= 5){ lockUntil = Date.now()+30000; fails = 0; reply(t("tooMany",30)); }
+  else reply(t("wrong",5-fails));
+}
+
+/* --- эгани созлаш ойнаси --- */
+let gateMode = "first";
+function openGate(mode){
+  gateMode = mode; $("gate").classList.add("show"); $("gateErr").textContent = "";
+  $("gTitle").textContent = t("gNew"); $("gText").textContent = t("gNewText");
+  $("gName").placeholder = t("gName"); $("gPass").placeholder = t("gPass"); $("gPass2").placeholder = t("gPass2");
+  $("gSave").textContent = t("gSave"); $("gSkip").textContent = mode==="first" ? t("gSkip") : t("gCancel");
+  $("gName").value = ownerName(); $("gPass").value = ""; $("gPass2").value = ""; setTimeout(()=>$("gName").focus(),50);
+}
+$("gSkip").onclick = () => { $("gate").classList.remove("show"); if(gateMode==="first") store.set("jv_skip","1"); };
+$("gSave").onclick = async () => {
+  const p1 = normPhrase($("gPass").value), p2 = normPhrase($("gPass2").value);
+  if(p1.length < 4) return $("gateErr").textContent = t("gErrShort");
+  if(p1 !== p2) return $("gateErr").textContent = t("gErrMatch");
+  if(skeleton(p1).replace(/ /g,"").length < 3) return $("gateErr").textContent = t("gErrCons");
+  const salt = b64e(crypto.getRandomValues(new Uint8Array(16)));
+  owner = { name:$("gName").value.trim(), salt, words:p1.split(" ").length, hash:await hashPhrase(p1,salt), hash2:await hashPhrase(skeleton(p1),salt) };
+  store.set("jv_owner",JSON.stringify(owner)); $("ownerName").value = owner.name;
+  $("gate").classList.remove("show"); locked = false; touch(); lockUI(); chime("ok"); reply(t("ownerSaved"));
+};
+$("lockBadge").onclick = () => { if(!owner) openGate("first"); else if(locked) $("txt").focus(); else lockNow(); };
+$("chPass").onclick = () => { if(!locked) openGate("change"); };
+$("resetOwner").onclick = () => { if(locked || !owner) return; if(confirm("Эгани ва қулфни ўчирайми?")){ owner=null; store.del("jv_owner"); lockUI(); reply(t("ownerRemoved")); } };
+$("ownerName").onchange = () => { const n=$("ownerName").value.trim(); if(owner){ owner.name=n; store.set("jv_owner",JSON.stringify(owner)); } else store.set("jv_ownerName",n); };
+$("autolock").onchange = () => store.set("jv_autolock",$("autolock").value);
+setInterval(()=>{ const m = +$("autolock").value; if(owner && !locked && m>0 && !speaking && Date.now()-lastActive > m*60000) lockNow(); },5000);
+
+/* ====================================================================
+ *  Овозни таниб олиш (STT)
+ * ==================================================================== */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, restartTimer = null;
+function startRecognition(){
+  if(!SR || !active || speaking || rec) return;
+  rec = new SR(); rec.lang = L[lang].speech; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
+  rec.onstart = () => { if(!speaking) setState("listening"); };
+  rec.onresult = e => {
+    let interim = "";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r = e.results[i];
+      if(r.isFinal){ $("interim").textContent = ""; const alts = Array.from(r).map(a=>a.transcript.trim()).filter(Boolean); handleInput(alts[0]||"","voice",alts); }
+      else { interim += r[0].transcript; Holo.kick(.25); }
+    }
+    if(interim) $("interim").textContent = locked ? "•••" : interim;
+  };
+  rec.onerror = e => { if(e.error==="not-allowed"||e.error==="service-not-allowed"){ active=false; updateMic(); addMsg("sys",t("micDenied")); } };
+  rec.onend = () => { rec = null; $("interim").textContent = "";
+    if(active && !speaking){ clearTimeout(restartTimer); restartTimer = setTimeout(startRecognition,250); } else if(!speaking) setState(locked?"locked":"idle"); };
+  try{ rec.start(); }catch{ rec = null; }
+}
+function stopRecognition(){ clearTimeout(restartTimer); if(rec){ const r=rec; rec=null; r.onend=null; try{ r.abort(); }catch{} } }
+function updateMic(){ $("mic").classList.toggle("on",active); }
+$("mic").onclick = () => {
+  if(!SR){ addMsg("sys",t("noSR")); return; }
+  active = !active; updateMic(); chime(active?"on":"off");
+  if(active) startRecognition(); else { stopRecognition(); stopSpeaking(); setState(locked?"locked":"idle"); }
+};
+$("hush").onclick = stopSpeaking;
+
+/* ====================================================================
+ *  Буйруқларни қайта ишлаш
+ * ==================================================================== */
+const WAKE = ["жарвис","джарвис","жарвиз","ярвис","jarvis","jarviz","djarvis","jarvys","жорвис","жарвес","harvis","чарвис"].map(fold);
+
+async function handleInput(raw, src="text", alts=[raw]){
+  raw = (raw||"").trim(); if(!raw) return;
+  if(locked){                                   // қулфланган: фақат парол текширилади
+    if(owner){ if(src==="text") $("txt").value=""; await tryUnlock(alts.length?alts:[raw],src); }
+    return;
+  }
+  let s = fold(raw).replace(/[.,!?;:«»"()]/g," ").replace(/\s+/g," ").trim();
+  const w = WAKE.find(x=>s.includes(x));
+  if($("wake").checked && !w && src==="voice") return;
+  touch();
+  if(w){ s = s.replace(w,"").replace(/\s+/g," ").trim(); raw = raw.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"),"").replace(/^[\s,.!?]+/,"").trim(); }
+  if(!s){ addMsg("me",raw||"…"); chime("on"); return reply(pick(L[lang].greet)); }
+  addMsg("me",raw);
+  try{ await route(s,raw); }catch(err){ console.error(err); reply("⚠ "+err.message); }
+}
+
+const W = {
+  stop:["тухта","жим бул","жим тур","stop","стоп","хватит","замолчи","jim bol","toxta","jim tur","тинч бул"],
+  spinWord:["айлан","aylan","вращ","крути","rotat","spin"],
+  time:["соат неча","вакт неча","вакт канча","соат канча","сколько времени","который час","what time","the time","soat necha","vaqt necha","soat qancha","vaqt qancha","неча соат","нечи соат","текущее время"],
+  date:["сана","какое число","какая дата","какой сегодня","какой день","what date","todays date","what day","sana","bugun qaysi","кайси кун","кайси сана","bugun nima kun","нима кун","дата"],
+  weather:["об-хаво","обхаво","об хаво","ob-havo","obhavo","ob havo","погода","weather","хаво кандай","havo qanday","прогноз"],
+  battery:["батаре","зарядк","battery","quvvat","заряд"],
+  joke:["хазил","латифа","hazil","latifa","шутк","анекдот","joke","funny"],
+  fact:["факт","fact","кизик","qiziq","интересн","интересное"],
+  coin:["танга","tanga","монет","coin","орел и решка"], dice:["кубик","dice","зар таш","бросай кубик","zar tash","roll"], random:["тасодифий","tasodifiy","random","случайн"],
+  who:["кимсан","ким сан","сен кимсан","ты кто","who are you","kimsan","кто ты","нима кила оласан","что ты умеешь","what can you do","nima qila olasan","имконият","возможност"],
+  help:["ердам","yordam","помощь","помоги","help","команд"],
+  how:["калайсан","каласан","qalaysan","как дела","how are you","ахвол","нима гап","nima gap","яхшимисан","yaxshimisan"],
+  thanks:["рахмат","rahmat","спасибо","thanks","thank you","благодар"],
+  noteSave:["ёзиб куй","езиб куй","yozib qoy","эслаб кол","eslab qol","запомни","запиши","remember","note that","note "],
+  notes:["езувларим","езувларни","эслатмаларим","заметки","мои заметки","my notes","read notes","yozuvlarim","yozuvlarni","eslatmalarim"],
+  clearWord:["учир","ochir","тозала","tozala","удали","очисти","clear","delete"],
+  remind:["эслат","eslat","напомни","remind"],
+  holoVerb:["курсат","korsat","покаж","show","display","голограмм","хологр","hologram","3d","3д","проекци","ясаб","yasab","намоён"],
+  colorVerb:["ранг","rang","цвет","color","colour","кил","qil","сделай","make","алмаштир","almashtir","поменяй","change"],
+  zoomIn:["катталаштир","kattalashtir","увеличь","bigger","zoom in","якинлаштир","yaqinlashtir","приблизь"],
+  zoomOut:["кичрайт","kichraytir","уменьши","smaller","zoom out","узоклаштир","uzoqlashtir","отдали"],
+  full:["толик экран","tolik ekran","to'liq ekran","fullscreen","полный экран","на весь экран","butun ekran"],
+  speak:["гапир","gapir","говори","speak","switch","переключи","tilni","язык"],
+  search:["кидир","qidir","изла","найди","поищи","поиск","search"],
+  ask:["что такое","кто такой","кто такая","who is","what is","who was","tell me about","хакида айт","haqida ayt","расскажи о","расскажи про"]
+};
+const SITES = { youtube:["https://www.youtube.com","YouTube"], google:["https://www.google.com","Google"], telegram:["https://web.telegram.org","Telegram"],
+  instagram:["https://www.instagram.com","Instagram"], facebook:["https://www.facebook.com","Facebook"], gmail:["https://mail.google.com","Gmail"],
+  maps:["https://maps.google.com","Google Maps"], whatsapp:["https://web.whatsapp.com","WhatsApp"], github:["https://github.com","GitHub"],
+  wikipedia:["https://wikipedia.org","Wikipedia"], kunuz:["https://kun.uz","Kun.uz"], olx:["https://www.olx.uz","OLX"], tiktok:["https://www.tiktok.com","TikTok"] };
+const SITE_WORDS = { youtube:["youtube","ютуб","ютьюб","yutub"], google:["google","гугл","gugl"], telegram:["telegram","телеграм"], instagram:["instagram","инстаграм","инста"],
+  facebook:["facebook","фейсбук"], gmail:["gmail","джимейл","гмейл","жимейл","почта"], maps:["maps","карта","карты","харита","xarita"], whatsapp:["whatsapp","ватсап","вотсап"],
+  github:["github","гитхаб"], wikipedia:["wikipedia","википедия"], kunuz:["kun.uz","кун уз","кунуз","kun uz"], olx:["olx","олх"], tiktok:["tiktok","тикток"] };
+
+async function route(s, raw){
+  const tk = tokensOf(s);
+  setState("thinking");
+  const done = () => { if(!speaking) setState(active?"listening":"idle"); };
+
+  // --- ҳолограмма бошқаруви (энг аввал: «айланишни тўхтат» жимлик буйруғи билан чалкашмасин) ---
+  const colorHit = Object.keys(COLOR_WORDS).find(k => tokHas(tk,COLOR_WORDS[k]));
+  if(colorHit && has(s,W.colorVerb) && !has(s,W.holoVerb.slice(0,4))){ Holo.setColor(colorHit); $("color").value=colorHit; store.set("jv_color",colorHit); applyTheme(); Holo.glitchNow(); return reply(t("holoColor")); }
+  if(has(s,W.spinWord)){ const off = has(s,W.stop)||has(s,["останов","ўчир","uchir","учир","off"]); Holo.setSpin(!off); $("spin").checked=!off; return reply(off?t("spinOff"):t("spinOn")); }
+  if(has(s,W.zoomIn)){ Holo.zoomBy(1.3); return reply(t("zoomIn")); }
+  if(has(s,W.zoomOut)){ Holo.zoomBy(.77); return reply(t("zoomOut")); }
+  const shapeHit = SHAPES.find(k => tokHas(tk,SHAPE_WORDS[k]));
+  if(shapeHit && has(s,W.holoVerb)){ return reply(t("holoShow",L[lang].shapes[shapeHit]),{shape:shapeHit}); }
+
+  if(has(s,W.stop)){ stopSpeaking(); addMsg("bot",t("stop")); done(); return; }
+  if(tokHas(tk,["lock$","lockdown$","кулфла","qulfla","заблок","блокир"])){ return lockNow(); }
+
+  // --- тил ---
+  if(has(s,W.speak)){
+    const l = has(s,["ozbek","узбек","узбекча","uzbek"])?"uz" : has(s,["рус","rus"])?"ru" : has(s,["инглиз","ingliz","англ","english"])?"en" : null;
+    if(l){ setLang(l); return reply(t("langSet")); }
+  }
+  // --- таймер / эслатма ---
+  const tm = s.match(/(\d+)\s*(сония|секунд|sekund|soniya|second|sec|дакика|дакик|минут|daqiqa|minute|min|соат|час|soat|hour)/);
+  if((has(s,["таймер","timer","taymer","секундомер"])||has(s,W.remind)) && tm){
+    const n=+tm[1], u=tm[2], secs = n*(/сония|секунд|sekund|soniya|sec/.test(u)?1:/соат|час|soat|hour/.test(u)?3600:60);
+    let msg = s.replace(tm[0]," ").replace(/(таймер|timer|taymer|дан кейин|dan keyin|через|later|in|ни|эслат\w*|eslat\w*|напомни\w*|remind( me)?( to)?)/g," ").replace(/\s+/g," ").trim();
+    setTimeout(()=>{ chime("ok"); setTimeout(()=>chime("ok"),600); if(!locked) reply(msg?t("remind",msg):t("timerDone")); }, secs*1000);
+    return reply(t("timerSet",fmtDur(secs)));
+  }
+  // --- ёзувлар ---
+  if(has(s,W.notes)){
+    const list = JSON.parse(store.get("jv_notes","[]"));
+    if(has(s,W.clearWord)){ store.set("jv_notes","[]"); return reply(t("notesCleared")); }
+    return list.length ? reply(t("notesRead",list.map((n,i)=>`${i+1}) ${n.t}`).join("; ")))  : reply(t("noteEmpty"));
+  }
+  const nm = s.match(new RegExp("(?:"+W.noteSave.map(x=>kw(x).trim()).join("|")+")\\s+(.+)"));
+  if(nm){ const list=JSON.parse(store.get("jv_notes","[]")); list.push({t:nm[1],d:Date.now()}); store.set("jv_notes",JSON.stringify(list.slice(-100))); return reply(t("noteSaved",nm[1])); }
+
+  // --- ахборот ---
+  if(has(s,W.time) || (tokHas(tk,["соат","soat","вакт","vaqt","время","час$"]) && tokHas(tk,["неч","qanch","канч","сколько","нечи"]))){ const d=new Date(); return reply(t("time",d.getHours(),String(d.getMinutes()).padStart(2,"0"))); }
+  if(has(s,W.date)){ const d=new Date(), l=L[lang]; return reply(t("date",`${d.getDate()} ${l.months[d.getMonth()]}, ${l.days[d.getDay()]}`)); }
+  if(has(s,W.weather)) return weather();
+  if(tokHas(tk,["курс","kurs","rate$","валют","exchange"])) return currency(s);
+  if(has(s,W.battery)) return battery();
+  if(has(s,W.full)){ try{ await document.documentElement.requestFullscreen(); }catch{} return reply(t("fullscreen")); }
+
+  // --- кичик суҳбат ---
+  if(has(s,W.joke)) return reply(pick(L[lang].jokes));
+  if(has(s,W.fact)) return reply(pick(L[lang].facts));
+  if(has(s,W.coin)) return reply(Math.random()<.5?t("heads"):t("tails"));
+  if(has(s,W.dice)) return reply(t("dice",1+Math.floor(Math.random()*6)));
+  if(has(s,W.random)){ const nums=(s.match(/\d+/g)||[]).map(Number), lo=nums.length>1?Math.min(...nums.slice(0,2)):1, hi=nums.length>1?Math.max(...nums.slice(0,2)):(nums[0]||100); return reply(t("random",lo+Math.floor(Math.random()*(hi-lo+1)))); }
+  if(has(s,W.who)) return reply(t("who"));
+  if(has(s,W.help)) return reply(t("help"));
+  if(has(s,W.how)) return reply(pick(L[lang].fine));
+  if(has(s,W.thanks)) return reply(pick(L[lang].thanks));
+  if(/^(салом|ассалому алайкум|привет|здравствуй|hello|hi|hey|salom|assalomu alaykum)( |$)/.test(s)) return reply(pick(L[lang].greet));
+
+  // --- қидирув ---
+  if(has(s,W.search)){
+    const query = s.replace(/(ютуб\w*|youtube\w*|yutub\w*|гугл\w*|google\w*|кидир\w*|qidir\w*|изла\w*|найди|поищи|поиск|search( for)?|да|буйича|в)/g," ").replace(/\s+/g," ").trim();
+    if(!query) return reply(t("noQuery"));
+    const url = has(s,SITE_WORDS.youtube) ? "https://www.youtube.com/results?search_query="+encodeURIComponent(query) : "https://www.google.com/search?q="+encodeURIComponent(query);
+    openUrl(url); return reply(t("searching",query));
+  }
+  // --- сайт очиш ---
+  if(tokHas(tk,["оч$","och$","очиш","ochish","очгин","очинг","ochgin","ochib","открой","открыть","запусти","open$","launch$","ишга"])){
+    for(const [k,words] of Object.entries(SITE_WORDS)) if(has(s,words)){ openUrl(SITES[k][0]); return reply(t("opening",SITES[k][1])); }
+  }
+  // --- калькулятор ---
+  const calc = tryCalc(s); if(calc!==null) return reply(t("calc",calc));
+
+  // --- Википедия: «… ким», «… нима», «who is …» ---
+  const topic = extractTopic(s, tk);
+  const key = $("apikey").value.trim();
+  if(topic && !key){ const r = await wiki(topic); if(r){ return reply(r.text,{shape:suggestShape(topic+" "+r.title)}); } }
+  // --- Claude ---
+  if(key) return askClaude(raw,key);
+  if(topic) return reply(t("wikiNone"));
+  return reply(t("noKey"));
+}
+
+function openUrl(url){ window.open(url,"_blank","noopener"); }
+function suggestShape(text){ const tk=tokensOf(fold(text)); return SHAPES.find(k=>k!=="core"&&tokHas(tk,SHAPE_WORDS[k])) || null; }
+function extractTopic(s,tk){
+  const isAsk = has(s,W.ask) || tokHas(tk,["ким$","kim$","нима$","nima$","кто$","что$"]);
+  if(!isAsk) return null;
+  const x = s.replace(/(что такое|кто такой|кто такая|who is|who was|what is|tell me about|расскажи о|расскажи про|хакида айт|haqida ayt|haqida|хакида)/g," ")
+    .split(" ").filter(w=>!["ким","kim","нима","nima","кто","что","у","u","бу","bu","ул","ушбу"].includes(w)).join(" ").trim();
+  return (x.length < 2 || x.length > 60) ? null : x;
+}
+
+function tryCalc(s){
+  let e = s.replace(/,/g,".").replace(/плюс|куш(?:ув)?|qosh|plus|\+/g,"+").replace(/минус|айир|ayir|minus|-/g,"-")
+    .replace(/купайтир(?:иш)?|умнож\w*|kopaytir|times|multiplied by|multiply|умножить на|[x×х*]/g,"*")
+    .replace(/бул(?:ин)?|дели(?:ть)?|bol|divided by|divide|÷|\//g,"/").replace(/[^0-9+\-*/.() ]/g," ").replace(/\s+/g," ").trim();
+  if(!/^\d/.test(e) || !/[+\-*/]/.test(e) || !/\d\s*$/.test(e) || !/^[0-9+\-*/.() ]+$/.test(e)) return null;
+  try{ const r = Function('"use strict";return ('+e+')')(); if(typeof r!=="number"||!isFinite(r)) return L[lang].calcErr; return Math.round(r*1e6)/1e6; }
+  catch{ return L[lang].calcErr; }
+}
+
+async function weather(){
+  addMsg("sys",t("weatherWait"));
+  try{
+    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+    const {latitude:la,longitude:lo} = pos.coords;
+    const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`)).json();
+    const code = j.current.weather_code, wc = L[lang].wcode;
+    const desc = wc[code] ?? wc[Object.keys(wc).map(Number).filter(k=>k<=code).pop()] ?? "";
+    return reply(t("weather",Math.round(j.current.temperature_2m),desc,Math.round(j.daily.temperature_2m_max[0]),Math.round(j.daily.temperature_2m_min[0])),{shape:"globe"});
+  }catch{ return reply(t("weatherErr")); }
+}
+async function currency(s){
+  const c = has(s,["евро","euro"])?"EUR" : has(s,["рубл","ruble","rubl","сум"])&&!has(s,["доллар","dollar"])?"RUB" : "USD";
+  try{
+    const j = await (await fetch("https://open.er-api.com/v6/latest/USD")).json();
+    const uzs = j.rates.UZS / j.rates[c];
+    return reply(t("rate",L[lang].cur[c.toLowerCase()],Math.round(uzs).toLocaleString("ru-RU")));
+  }catch{ return reply(t("rateErr")); }
+}
+async function battery(){
+  if(!navigator.getBattery) return reply(t("noBattery"));
+  const b = await navigator.getBattery(); return reply(t("battery",Math.round(b.level*100),b.charging?t("charging"):""));
+}
+async function wiki(topic){
+  const langs = lang==="uz" ? ["uz","ru"] : [lang];
+  for(const lg of langs){
+    try{
+      const base = `https://${lg}.wikipedia.org`;
+      const sr = await (await fetch(`${base}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(topic)}&srlimit=1&format=json&origin=*`)).json();
+      const title = sr.query.search[0] && sr.query.search[0].title; if(!title) continue;
+      const sm = await (await fetch(`${base}/api/rest_v1/page/summary/${encodeURIComponent(title)}`)).json();
+      const sent = (sm.extract||"").match(/[^.!?]+[.!?]+/g) || [sm.extract||""];
+      const text = sent.slice(0,2).join(" ").trim().slice(0,420); if(text) return {text,title};
+    }catch{ /* кейингисини синаймиз */ }
+  }
+  return null;
+}
+
+async function askClaude(text,key){
+  const names = {uz:"Uzbek (Cyrillic script)",ru:"Russian",en:"English"}, d = new Date();
+  history.push({role:"user",content:text}); history = history.slice(-14);
+  try{
+    const res = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({
+        model:$("model").value, max_tokens:500,
+        system:`You are Jarvis, a loyal, witty holographic voice assistant who serves only your owner${ownerName()?` (${ownerName()})`:""}. Reply in ${names[lang]} unless the user speaks another language. Your answer is read aloud: 1-3 short conversational sentences, no markdown, lists, emoji or URLs. Current date/time: ${d.toString()}. You control a 3D hologram. If the topic fits one of these shapes, end your answer with a tag like [[holo:globe]] — allowed: ${SHAPES.join(", ")}. Omit the tag if none fits.`,
+        messages:history })
+    });
+    const j = await res.json(); if(!res.ok) throw new Error(j.error?.message||res.status);
+    let ans = j.content.map(c=>c.text||"").join("").trim();
+    const tag = ans.match(/\[\[holo:(\w+)\]\]/); ans = ans.replace(/\[\[holo:\w+\]\]/g,"").trim();
+    history.push({role:"assistant",content:ans});
+    return reply(ans,{shape:(tag&&SHAPES.includes(tag[1])?tag[1]:null)||suggestShape(text+" "+ans)});
+  }catch(err){ history.pop(); return reply(t("aiErr")+err.message); }
+}
+
+/* ====================================================================
+ *  Юбориш, созламалар, ишга тушириш
+ * ==================================================================== */
+function submitText(){ const v=$("txt").value.trim(); if(!v) return; if(!locked) $("txt").value=""; handleInput(v,"text",[v]); }
+$("send").onclick = submitText;
+$("txt").addEventListener("keydown",e=>{ if(e.key==="Enter") submitText(); });
+document.addEventListener("pointerdown",touch,{passive:true}); document.addEventListener("keydown",touch);
+
+function setLang(l){
+  lang = l; store.set("jv_lang",l); $("lang").value = l; document.documentElement.lang = l;
+  fillVoiceSelect(); relabel(); if(rec){ stopRecognition(); startRecognition(); }
+}
+$("lang").onchange = () => setLang($("lang").value);
+$("voice").onchange = () => store.set("jv_voice",$("voice").value);
+$("rate").onchange = () => store.set("jv_rate",$("rate").value);
+$("pitch").onchange = () => store.set("jv_pitch",$("pitch").value);
+$("wake").onchange = () => store.set("jv_wake",$("wake").checked?"1":"0");
+$("mute").onchange = () => { store.set("jv_mute",$("mute").checked?"1":"0"); if($("mute").checked) stopSpeaking(); };
+$("spin").onchange = () => { Holo.setSpin($("spin").checked); store.set("jv_spin",$("spin").checked?"1":"0"); };
+$("color").onchange = () => { Holo.setColor($("color").value); store.set("jv_color",$("color").value); applyTheme(); };
+$("apikey").onchange = () => store.set("jv_key",$("apikey").value.trim());
+$("model").onchange = () => store.set("jv_model",$("model").value);
+$("clear").onclick = () => { history=[]; $("log").innerHTML=""; };
+
+$("lang").value = lang; $("wake").checked = store.get("jv_wake","0")==="1"; $("mute").checked = store.get("jv_mute","0")==="1";
+$("rate").value = store.get("jv_rate","1"); $("pitch").value = store.get("jv_pitch","0.85"); $("apikey").value = store.get("jv_key","");
+$("model").value = store.get("jv_model","claude-haiku-4-5-20251001"); $("autolock").value = store.get("jv_autolock","10");
+$("spin").checked = store.get("jv_spin","1")==="1"; Holo.setSpin($("spin").checked);
+$("color").value = store.get("jv_color","cyan"); Holo.setColor($("color").value); $("ownerName").value = ownerName();
+function updateNet(){ $("netStatus").textContent = navigator.onLine ? "● онлайн" : "○ оффлайн"; }
+addEventListener("online",updateNet); addEventListener("offline",updateNet); updateNet();
+if(!SR) showWarn(t("noSR"));
+
+locked = !!owner; document.documentElement.lang = lang; lockUI();
+if(locked){ addMsg("sys",t("lockedMsg")); setState("locked"); }
+else { setState("idle"); addMsg("bot", ownerName() ? t("hello",ownerName()) : t("helloAnon")); if(!owner && store.get("jv_skip","0")!=="1") openGate("first"); }
+window.__jarvis = { Holo, route, handleInput, get locked(){ return locked; }, get owner(){ return owner; } };
 </script>
 </body>
 </html>
