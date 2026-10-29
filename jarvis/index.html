@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#03070d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Жарвис — ҳолограф овозли ёрдамчи</title>
 <style>
   :root{ --bg:#03070d; --panel:#08121c; --line:#12344a; --cyan:#27e3ff; --text:#d6f6ff; --dim:#6f98a8; --warn:#ffb347; --bad:#ff4d5e; }
@@ -65,6 +68,15 @@
   select,input[type=password],input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:14px;max-width:100%}
   .grow{flex:1;min-width:180px}
   .help{font-size:13px;color:var(--dim);margin-top:8px}.help code{color:var(--cyan)}
+  .small-btn{border:1px solid var(--cyan);color:var(--cyan);background:transparent;border-radius:14px;padding:3px 10px;cursor:pointer;font-size:13px}
+  textarea{width:100%;min-height:90px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:14px/1.4 system-ui,sans-serif;resize:vertical}
+  /* ---- вентилятор режими: қора фонда фақат ядро ---- */
+  #fanExit{display:none}
+  body.fan{background:#000}
+  body.fan header,body.fan main,body.fan .beam,body.fan .c,body.fan .tele,body.fan #holoLabel,body.fan #fallbackMsg,body.fan #stage::after{display:none}
+  body.fan #stage{position:fixed;inset:0;height:auto;z-index:20;background:#000;border:0}
+  body.fan #fanExit{display:block;position:fixed;top:10px;right:10px;z-index:30;opacity:.3;width:40px;height:40px;border-radius:50%;border:1px solid #fff;background:#000;color:#fff;cursor:pointer;font-size:18px}
+  body.fan #fanExit:hover{opacity:.9}
   #warn{display:none;width:100%;padding:10px 12px;border:1px solid var(--warn);border-radius:10px;color:var(--warn);font-size:14px}
 
   /* ---- эга созлаш ойнаси ---- */
@@ -81,7 +93,7 @@
 <body>
 <header>
   <h1>ЖАРВИС</h1>
-  <div class="right"><span id="netStatus"></span><button id="lockBadge" title="Қулф">🔓</button></div>
+  <div class="right"><span id="netStatus"></span><button id="fanBtn" class="small-btn" title="Вентилятор режими">⌬</button><button id="lockBadge" title="Қулф">🔓</button></div>
 </header>
 
 <section id="stage">
@@ -92,6 +104,7 @@
   <div class="tele" id="teleL"></div><div class="tele" id="teleR"></div>
   <div id="fallbackMsg"></div>
 </section>
+<button id="fanExit" title="Чиқиш">✕</button>
 
 <main>
   <div id="warn"></div>
@@ -144,6 +157,10 @@
       </select></label>
       <button class="small" id="clear">Тарихни тозала</button>
     </div>
+    <div class="row"><label class="grow" style="flex-direction:column;align-items:stretch">Жарвис шахсияти (ихтиёрий, Claude учун)
+      <input id="persona" type="text" placeholder="масалан: Мен Тошкентда яшайман, қисқа ва аниқ жавоб бер"></label></div>
+    <div class="row"><label class="grow" style="flex-direction:column;align-items:stretch">Жарвис хотираси: ҳар қатор — битта маълумот
+      <textarea id="kbText" placeholder="Ойимнинг туғилган куни — 12 март&#10;Wi-Fi номи — Home123"></textarea></label></div>
     <div class="help">Калит, парол ҳэши ва ёзувлар фақат шу браузерда (localStorage) сақланади. Парол очиқ ҳолда сақланмайди (PBKDF2 ҳэш).</div>
     <div class="help" id="cmdHelp"></div>
   </details>
@@ -181,12 +198,12 @@ uz:{ speech:"uz-UZ", fallbackSpeech:"ru-RU",
   lockedMsg:"Тизим қулфланган. Мен фақат эгамга бўйсунаман. Паролни айтинг ёки ёзинг.",
   unlocked:"Хуш келибсиз, {0}. Тизим очилди.", wrong:"Нотўғри парол. Қолган уриниш: {0}.", tooMany:"Жуда кўп хато. {0} сония кутинг.",
   nowLocked:"Тизим қулфланди.", ownerSaved:"Эга сақланди. Энди мен фақат сизга бўйсунаман.", ownerRemoved:"Эга ўчирилди. Энди ҳамма фойдалана олади.",
-  gNew:"Эгани созлаш", gNewText:"Жарвис фақат сизга бўйсунсин: исмингиз ва махфий ибора киритинг (камида 4 ҳарф, 2-3 сўз яхши). Ибораини овоз билан ҳам, ёзиб ҳам айтиб очасиз.",
+  gNew:"Эгани созлаш", gNewText:"Жарвис фақат сизга бўйсунсин: исмингиз ва махфий ибора киритинг (камида 4 ҳарф, 2-3 сўз яхши). Ибора ўрнига рақамли PIN (4+ рақам) ҳам бўлади. Очиш: овоз билан («бир икки уч тўрт») ёки ёзиб.",
   gName:"Исмингиз", gPass:"Махфий ибора", gPass2:"Ибораини такрорланг", gSave:"Сақла", gSkip:"Ҳозирча йўқ", gCancel:"Бекор",
   gErrShort:"Ибора жуда қисқа.", gErrMatch:"Иборалар бир хил эмас.", gErrCons:"Ибора жуда оддий — бошқа сўзлар қўшинг.",
   bannerLocked:"🔒 Қулфланган — паролни ёзинг ёки микрофонга айтинг.", unlock:"Очиш",
   who:"Мен Жарвис — фақат сизга бўйсунадиган ҳолограф овозли ёрдамчингизман. Соат, об-ҳаво, курс, Википедия, ҳисоблаш, таймер, ёзувлар ва 3D ҳолограммалар билан ишлайман.",
-  help:"Мисол: «соат неча», «об-ҳаво», «доллар курси», «Амир Темур ким», «5 плюс 7», «таймер 2 дақиқа», «ёзиб қўй сутдан олиш», «ёзувларим», «ҳолограммада юракни кўрсат», «ранг қизил», «қулфла».",
+  help:"Мисол: «соат неча», «об-ҳаво», «доллар курси», «намоз вақти», «Амир Темур ким», «5 плюс 7», «таймер 2 дақиқа», «соат 7 да уйғот», «секундомер», «билиб қўй …», «ёзиб қўй …», «ҳолограммада юракни кўрсат», «ҳолограмма шоуси», «вентилятор режими», «ранг қизил», «қулфла».",
   time:"Соат {0}:{1}", date:"Бугун {0}", opening:"{0} очилмоқда", searching:"«{0}» бўйича қидираман", noQuery:"Нимани қидирай?",
   calc:"Жавоб: {0}", calcErr:"Буни ҳисоблай олмадим.", timerSet:"Таймер {0}га ўрнатилди", timerDone:"Таймер тугади!", remind:"Эслатма: {0}",
   weatherWait:"Об-ҳавони текширяпман…", weather:"Ҳозир {0} даража, {1}. Бугун {3}…{2} даража.", weatherErr:"Об-ҳавони олиб бўлмади. Жойлашувга рухсат беринг.",
@@ -203,6 +220,14 @@ uz:{ speech:"uz-UZ", fallbackSpeech:"ru-RU",
   heads:"Тоҷ чиқди", tails:"Хат чиқди", dice:"Кубик: {0}", random:"Тасодифий сон: {0}",
   holoShow:"Ҳолограммада: {0}", holoColor:"Ранг ўзгартирилди.", spinOn:"Ҳолограмма айланяпти.", spinOff:"Айланиш тўхтатилди.", zoomIn:"Яқинлаштирдим.", zoomOut:"Узоқлаштирдим.",
   langSet:"Хўп, ўзбекча гапираман.", fullscreen:"Тўлиқ экран.",
+  kbSaved:"Билиб қўйдим: {0}", kbEmpty:"Хотирам бўш. «билиб қўй …» дейишингиз мумкин.", kbList:"Мен билганларим: {0}", kbCleared:"Хотира тозаланди.",
+  alarmSet:"Уйғотгич {0} га қўйилди. Саҳифа очиқ қолиши керак.", alarmRing:"Уйғониш вақти!", alarmBad:"Вақтни тушунмадим. Масалан: «соат 7 30 да уйғот».",
+  swStart:"Секундомер ишга тушди.", swStop:"Секундомер: {0}.", swNone:"Секундомер ишламаяпти.",
+  prayer:"Намоз вақтлари: {0}.", prayerErr:"Намоз вақтларини олиб бўлмади. Жойлашувга рухсат беринг.", prayerN:["Бомдод","Қуёш чиқиши","Пешин","Аср","Шом","Хуфтон"],
+  showOn:"Ҳолограмма шоуси бошланди. Тўхтатиш учун «тўхта» денг.", showOff:"Шоу тўхтатилди.",
+  fanOn:"Вентилятор режими. Чиқиш учун юқори ўнгдаги ✕ ни босинг.", fanOff:"Оддий режимга қайтдим.",
+  fanInfo:"PD13 вентилятор видео ва расмни TF картадан ўйнатади, дастур ишлатмайди. Компьютерда 3D Displayer дастурини очинг, моделни F-Wini11 деб танланг, видеони қўшинг, экспортни босинг ва файлни TF картага кўчиринг. Картани вентиляторга солиб, пульт билан ўйнатинг. Тайёр ҳолограмма видеолари fan папкасида.",
+  madeBy:"Мени сиз Claude ёрдамида яратдингиз. Мен фақат сизга бўйсунаман.",
   shapes:{core:"Жарвис ядроси",globe:"Ер шари",cube:"Куб",pyramid:"Пирамида",torus:"Тор",dna:"ДНК",heart:"Юрак",atom:"Атом",galaxy:"Галактика",saturn:"Сатурн"},
   days:["якшанба","душанба","сешанба","чоршанба","пайшанба","жума","шанба"],
   months:["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"],
@@ -216,12 +241,12 @@ ru:{ speech:"ru-RU", fallbackSpeech:"ru-RU",
   lockedMsg:"Система заблокирована. Я подчиняюсь только хозяину. Произнесите или введите пароль.",
   unlocked:"С возвращением, {0}. Система разблокирована.", wrong:"Неверный пароль. Осталось попыток: {0}.", tooMany:"Слишком много ошибок. Подождите {0} сек.",
   nowLocked:"Система заблокирована.", ownerSaved:"Хозяин сохранён. Теперь я подчиняюсь только вам.", ownerRemoved:"Хозяин удалён. Теперь доступ у всех.",
-  gNew:"Настройка хозяина", gNewText:"Чтобы Джарвис подчинялся только вам, введите имя и секретную фразу (минимум 4 буквы, лучше 2–3 слова). Разблокировать можно голосом или текстом.",
+  gNew:"Настройка хозяина", gNewText:"Чтобы Джарвис подчинялся только вам, введите имя и секретную фразу (минимум 4 буквы, лучше 2–3 слова). Можно использовать и цифровой PIN (4+ цифры). Разблокировать можно голосом («один два три четыре») или текстом.",
   gName:"Ваше имя", gPass:"Секретная фраза", gPass2:"Повторите фразу", gSave:"Сохранить", gSkip:"Не сейчас", gCancel:"Отмена",
   gErrShort:"Фраза слишком короткая.", gErrMatch:"Фразы не совпадают.", gErrCons:"Фраза слишком простая — добавьте слов.",
   bannerLocked:"🔒 Заблокировано — введите пароль или произнесите его.", unlock:"Открыть",
   who:"Я Джарвис — голографический помощник, который подчиняется только вам. Время, погода, курсы, Википедия, расчёты, таймеры, заметки и 3D-голограммы.",
-  help:"Примеры: «который час», «погода», «курс доллара», «кто такой Амир Темур», «5 плюс 7», «таймер 2 минуты», «запиши купить молоко», «мои заметки», «покажи голограмму сердца», «цвет красный», «заблокируй».",
+  help:"Примеры: «который час», «погода», «курс доллара», «время намаза», «кто такой Амир Темур», «5 плюс 7», «таймер 2 минуты», «разбуди в 7», «секундомер», «запомни, что …», «запиши …», «покажи голограмму сердца», «шоу голограмм», «режим вентилятора», «цвет красный», «заблокируй».",
   time:"Сейчас {0}:{1}", date:"Сегодня {0}", opening:"Открываю {0}", searching:"Ищу «{0}»", noQuery:"Что искать?",
   calc:"Ответ: {0}", calcErr:"Не смог посчитать.", timerSet:"Таймер на {0} запущен", timerDone:"Таймер сработал!", remind:"Напоминание: {0}",
   weatherWait:"Проверяю погоду…", weather:"Сейчас {0} градусов, {1}. Сегодня от {3} до {2}.", weatherErr:"Не удалось узнать погоду. Разрешите геолокацию.",
@@ -238,6 +263,14 @@ ru:{ speech:"ru-RU", fallbackSpeech:"ru-RU",
   heads:"Выпал орёл", tails:"Выпала решка", dice:"Кубик: {0}", random:"Случайное число: {0}",
   holoShow:"Голограмма: {0}", holoColor:"Цвет изменён.", spinOn:"Голограмма вращается.", spinOff:"Вращение остановлено.", zoomIn:"Приблизил.", zoomOut:"Отдалил.",
   langSet:"Хорошо, говорю по-русски.", fullscreen:"Полный экран.",
+  kbSaved:"Запомнил: {0}", kbEmpty:"Моя память пуста. Скажите «запомни, что …».", kbList:"Что я знаю: {0}", kbCleared:"Память очищена.",
+  alarmSet:"Будильник на {0}. Страница должна оставаться открытой.", alarmRing:"Пора вставать!", alarmBad:"Не понял время. Например: «разбуди в 7 30».",
+  swStart:"Секундомер запущен.", swStop:"Секундомер: {0}.", swNone:"Секундомер не запущен.",
+  prayer:"Время намаза: {0}.", prayerErr:"Не удалось получить время намаза. Разрешите геолокацию.", prayerN:["Фаджр","Восход","Зухр","Аср","Магриб","Иша"],
+  showOn:"Шоу голограмм запущено. Чтобы остановить, скажите «стоп».", showOff:"Шоу остановлено.",
+  fanOn:"Режим вентилятора. Для выхода нажмите ✕ вверху справа.", fanOff:"Вернулся в обычный режим.",
+  fanInfo:"Вентилятор PD13 проигрывает видео и картинки с TF-карты и не запускает программы. На компьютере откройте 3D Displayer, выберите модель F-Wini11, добавьте видео, нажмите экспорт и скопируйте файл на TF-карту. Вставьте карту в вентилятор и запустите пультом. Готовые видео голограмм лежат в папке fan.",
+  madeBy:"Меня создали вы с помощью Claude. Я подчиняюсь только вам.",
   shapes:{core:"Ядро Джарвиса",globe:"Земля",cube:"Куб",pyramid:"Пирамида",torus:"Тор",dna:"ДНК",heart:"Сердце",atom:"Атом",galaxy:"Галактика",saturn:"Сатурн"},
   days:["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"],
   months:["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"],
@@ -251,12 +284,12 @@ en:{ speech:"en-US", fallbackSpeech:"en-US",
   lockedMsg:"System locked. I only obey my owner. Say or type the passphrase.",
   unlocked:"Welcome back, {0}. System unlocked.", wrong:"Wrong passphrase. Attempts left: {0}.", tooMany:"Too many failures. Wait {0} seconds.",
   nowLocked:"System locked.", ownerSaved:"Owner saved. I'll obey only you now.", ownerRemoved:"Owner removed. Anyone can use me now.",
-  gNew:"Set up owner", gNewText:"To make Jarvis obey only you, enter your name and a secret phrase (4+ letters, 2–3 words works best). You can unlock by voice or typing.",
+  gNew:"Set up owner", gNewText:"To make Jarvis obey only you, enter your name and a secret phrase (4+ letters, 2–3 words works best). A numeric PIN (4+ digits) works too. Unlock by voice (\"one two three four\") or typing.",
   gName:"Your name", gPass:"Secret phrase", gPass2:"Repeat phrase", gSave:"Save", gSkip:"Not now", gCancel:"Cancel",
   gErrShort:"Phrase is too short.", gErrMatch:"Phrases don't match.", gErrCons:"Phrase is too simple — add more words.",
   bannerLocked:"🔒 Locked — type the passphrase or say it.", unlock:"Unlock",
   who:"I'm Jarvis — a holographic voice assistant that obeys only you. Time, weather, rates, Wikipedia, math, timers, notes and 3D holograms.",
-  help:"Try: \"what time is it\", \"weather\", \"dollar rate\", \"who is Albert Einstein\", \"5 plus 7\", \"timer 2 minutes\", \"note buy milk\", \"my notes\", \"show the heart hologram\", \"color red\", \"lock\".",
+  help:"Try: \"what time is it\", \"weather\", \"dollar rate\", \"prayer times\", \"who is Albert Einstein\", \"5 plus 7\", \"timer 2 minutes\", \"wake me at 7\", \"stopwatch\", \"remember that …\", \"note …\", \"show the heart hologram\", \"hologram show\", \"fan mode\", \"color red\", \"lock\".",
   time:"It's {0}:{1}", date:"Today is {0}", opening:"Opening {0}", searching:"Searching for \"{0}\"", noQuery:"What should I search for?",
   calc:"The answer is {0}", calcErr:"I couldn't calculate that.", timerSet:"Timer set for {0}", timerDone:"Time's up!", remind:"Reminder: {0}",
   weatherWait:"Checking the weather…", weather:"It's {0} degrees, {1}. Today {3} to {2}.", weatherErr:"Couldn't get the weather. Please allow location.",
@@ -273,6 +306,14 @@ en:{ speech:"en-US", fallbackSpeech:"en-US",
   heads:"Heads", tails:"Tails", dice:"Dice: {0}", random:"Random number: {0}",
   holoShow:"Hologram: {0}", holoColor:"Colour changed.", spinOn:"Hologram is spinning.", spinOff:"Spin stopped.", zoomIn:"Zoomed in.", zoomOut:"Zoomed out.",
   langSet:"Okay, switching to English.", fullscreen:"Fullscreen.",
+  kbSaved:"Remembered: {0}", kbEmpty:"My memory is empty. Say \"remember that …\".", kbList:"Here is what I know: {0}", kbCleared:"Memory cleared.",
+  alarmSet:"Alarm set for {0}. Keep this page open.", alarmRing:"Wake up!", alarmBad:"I didn't get the time. Try: \"wake me at 7 30\".",
+  swStart:"Stopwatch started.", swStop:"Stopwatch: {0}.", swNone:"No stopwatch is running.",
+  prayer:"Prayer times: {0}.", prayerErr:"Couldn't get prayer times. Please allow location.", prayerN:["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"],
+  showOn:"Hologram show started. Say stop to end it.", showOff:"Show stopped.",
+  fanOn:"Fan mode. Tap the ✕ at the top right to exit.", fanOff:"Back to normal mode.",
+  fanInfo:"The PD13 fan plays videos and pictures from its TF card; it cannot run apps. On a PC open 3D Displayer, pick model F-Wini11, add the video, click export and copy the file to the TF card. Put the card in the fan and play it with the remote. Ready-made hologram videos are in the fan folder.",
+  madeBy:"You built me with Claude. I obey only you.",
   shapes:{core:"Jarvis core",globe:"Earth",cube:"Cube",pyramid:"Pyramid",torus:"Torus",dna:"DNA",heart:"Heart",atom:"Atom",galaxy:"Galaxy",saturn:"Saturn"},
   days:["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
   months:["January","February","March","April","May","June","July","August","September","October","November","December"],
@@ -346,11 +387,12 @@ const Holo = (() => {
 
   const GEN = {
     core: () => fill((i,f) => {
-      if(f<.32) return unit();
-      if(f<.50){ const u=unit(); return [u[0]*.58,u[1]*.58,u[2]*.58]; }
-      if(f<.72){ const a=rnd()*pi2; return [1.15*Math.cos(a), (rnd()-.5)*.06, 1.15*Math.sin(a)]; }
-      if(f<.90){ const a=rnd()*pi2, p=[.85*Math.cos(a),(rnd()-.5)*.06,.85*Math.sin(a)]; return rot(p,"x",1.2); }
-      const u=unit(); return [u[0]*.2,u[1]*.2,u[2]*.2];
+      if(f<.42) return unit();
+      if(f<.64){ const u=unit(); return [u[0]*.58,u[1]*.58,u[2]*.58]; }
+      if(f<.72){ const a=rnd()*pi2; return [1.15*Math.cos(a), (rnd()-.5)*.05, 1.15*Math.sin(a)]; }
+      if(f<.80){ const a=rnd()*pi2, p=[.85*Math.cos(a),(rnd()-.5)*.05,.85*Math.sin(a)]; return rot(p,"x",1.2); }
+      if(f<.88){ const u=unit(), r=.2*Math.cbrt(rnd()); return [u[0]*r,u[1]*r,u[2]*r]; }
+      const lon=Math.floor(rnd()*3)*Math.PI/3, lat=(rnd()-.5)*Math.PI, c=Math.cos(lat); return [c*Math.cos(lon), Math.sin(lat), c*Math.sin(lon)];
     }),
     globe: () => fill((i,f) => {
       if(f<.38){ const lat=(Math.floor(rnd()*11)-5)*Math.PI/12, lon=rnd()*pi2, c=Math.cos(lat); return [c*Math.cos(lon), Math.sin(lat), c*Math.sin(lon)]; }
@@ -409,11 +451,11 @@ const Holo = (() => {
   try{ gl = cv.getContext("webgl",{antialias:true,alpha:true,premultipliedAlpha:true}) || cv.getContext("experimental-webgl"); }catch{}
   let prog, loc = {}, bufMain, bufSeed, ringBufs = [], baseBuf, ringSeed, baseSeed;
   const VS = `attribute vec3 aPos; attribute float aSeed;
-    uniform mat4 uMVP; uniform float uTime,uAmp,uAmpK,uSize,uPx,uScan,uGlitch;
+    uniform mat4 uMVP; uniform float uTime,uAmp,uAmpK,uSize,uPx,uScan,uGlitch,uShim;
     varying float vA; varying float vScan;
     void main(){
       vec3 p=aPos;
-      float n=sin(aSeed*43.7+uTime*3.0)*0.5+0.5;
+      float n=sin(aSeed*43.7+uTime*uShim)*0.5+0.5;
       p+=normalize(p+vec3(0.0001))*uAmp*uAmpK*0.16*n;
       float g=step(0.965,fract(sin(floor(uTime*14.0)*91.7)*437.5))*uGlitch;
       p.x+=g*0.18*sin(p.y*18.0+uTime*70.0);
@@ -422,12 +464,12 @@ const Holo = (() => {
       float sc=fract(p.y*0.42-uTime*uScan);
       vScan=uScan>0.0?smoothstep(0.94,1.0,sc):0.0;
       vA=0.5+0.5*n;
-      gl_PointSize=max(1.0,uPx*uSize*(1.0+uAmp*uAmpK*0.6+vScan*1.4)/pos.w);
+      gl_PointSize=max(1.0,uPx*uSize*(1.0+uAmp*uAmpK*0.6+vScan*0.8)/pos.w);
     }`;
   const FS = `precision mediump float; uniform vec3 uColor; uniform float uFlicker,uAlpha; varying float vA; varying float vScan;
     void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c); if(d>0.5) discard;
       float a=smoothstep(0.5,0.05,d);
-      vec3 col=mix(uColor,vec3(1.0),vScan*0.85+a*0.2);
+      vec3 col=mix(uColor,vec3(1.0),vScan*0.55+a*0.2);
       gl_FragColor=vec4(col*(a*vA*uFlicker*uAlpha),a*vA*uFlicker*uAlpha); }`;
   const sh = (type,src) => { const s=gl.createShader(type); gl.shaderSource(s,src); gl.compileShader(s); if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
   const mkBuf = (data,usage) => { const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,data,usage||gl.STATIC_DRAW); return b; };
@@ -437,7 +479,7 @@ const Holo = (() => {
       prog = gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(prog);
       if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
       gl.useProgram(prog);
-      ["uMVP","uTime","uAmp","uAmpK","uSize","uPx","uScan","uGlitch","uColor","uFlicker","uAlpha"].forEach(n=>loc[n]=gl.getUniformLocation(prog,n));
+      ["uMVP","uTime","uAmp","uAmpK","uSize","uPx","uScan","uGlitch","uShim","uColor","uFlicker","uAlpha"].forEach(n=>loc[n]=gl.getUniformLocation(prog,n));
       loc.aPos = gl.getAttribLocation(prog,"aPos"); loc.aSeed = gl.getAttribLocation(prog,"aSeed");
       bufMain = mkBuf(cur,gl.DYNAMIC_DRAW); bufSeed = mkBuf(seed);
       rings.forEach(r=>{ r.buf=mkBuf(r.p); r.seed=mkBuf(seeds(r.p.length/3)); });
@@ -462,43 +504,44 @@ const Holo = (() => {
     return dpr;
   }
 
-  let last = performance.now();
-  function frame(now){
-    const dt = Math.min(.05,(now-last)/1000); last = now; tNow += dt;
+  let last = performance.now(), manual = false, fan = false, loopT = 12;
+  function frame(now){ if(manual) return; const dt = Math.min(.05,(now-last)/1000); last = now; tick(dt); requestAnimationFrame(frame); }
+  function tick(dt){
+    tNow += dt;
     const dpr = resize();
     // зарралар мақсад томон силжийди
     for(let i=0;i<N;i++){ const k = Math.min(1, dt*(1.6+seed[i]*3.4)), j=i*3;
       cur[j]+=(tgt[j]-cur[j])*k; cur[j+1]+=(tgt[j+1]-cur[j+1])*k; cur[j+2]+=(tgt[j+2]-cur[j+2])*k; }
     // амплитуда
     kick = Math.max(0, kick - dt*2.2);
-    const base = st==="speaking" ? .45+.25*Math.sin(tNow*9)*Math.sin(tNow*2.7) : st==="listening" ? .22+.1*Math.sin(tNow*4.5) : st==="thinking" ? .3+.12*Math.sin(tNow*7) : .06+.03*Math.sin(tNow*1.4);
+    const base = manual ? .1+.07*Math.sin(tNow*pi2*2/loopT) : st==="speaking" ? .45+.25*Math.sin(tNow*9)*Math.sin(tNow*2.7) : st==="listening" ? .22+.1*Math.sin(tNow*4.5) : st==="thinking" ? .3+.12*Math.sin(tNow*7) : .06+.03*Math.sin(tNow*1.4);
     amp += ((base+kick*.6) - amp)*Math.min(1,dt*10);
     glitch = Math.max(0, glitch - dt*1.4);
     // ранг
-    const want = locked ? COLORS.red : st==="thinking" ? [1,.74,.2] : st==="listening" ? colorTheme().map((v,i)=>v*.6+[.3,1,.6][i]*.4) : colorTheme();
+    const want = (locked && !fan) ? COLORS.red : st==="thinking" ? [1,.74,.2] : st==="listening" ? colorTheme().map((v,i)=>v*.6+[.3,1,.6][i]*.4) : colorTheme();
     for(let i=0;i<3;i++){ colT[i]=want[i]; col[i]+=(colT[i]-col[i])*Math.min(1,dt*5); }
     // айланиш
-    if(!dragging && autoSpin) rotY += dt*(locked?.15:.35);
+    if(manual) rotY = tNow*pi2/loopT; else if(!dragging && autoSpin) rotY += dt*(locked&&!fan?.15:.35);
     const aspect = cv.width/Math.max(1,cv.height);
     const proj = M.persp(.8,aspect,.1,50);
-    const view = M.mul(M.tr(0,-.05,-3.9/zoom), M.rx(rotX));
+    const view = M.mul(M.tr(0,-.05,-(fan?4.6*(aspect<1?1/aspect:1):3.9)/zoom), M.rx(rotX));
     const pulse = 1 + amp*.1;
     const sc = M.id(); sc[0]=sc[5]=sc[10]=pulse;
     const model = M.mul(M.tr(0,.12,0), M.mul(M.ry(rotY), sc));
-    const flick = (Math.random()<.015 ? .7 : 1) * (.94+.06*Math.sin(tNow*53));
+    const flick = fan ? 1.5 : (Math.random()<.015 ? .7 : 1) * (.94+.06*Math.sin(tNow*53));
 
     if(gl){
       gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
       gl.useProgram(prog);
-      gl.uniform1f(loc.uTime,tNow); gl.uniform1f(loc.uAmp,amp); gl.uniform1f(loc.uGlitch,glitch);
-      gl.uniform1f(loc.uPx, cv.height*.017*(dpr>1?1:1.2)); gl.uniform3f(loc.uColor,col[0],col[1],col[2]); gl.uniform1f(loc.uFlicker,flick);
+      gl.uniform1f(loc.uTime,tNow); gl.uniform1f(loc.uAmp,amp); gl.uniform1f(loc.uGlitch,fan?0:glitch); gl.uniform1f(loc.uShim, manual ? pi2*6/loopT : 3);
+      gl.uniform1f(loc.uPx, cv.height*.017*(dpr>1?1:1.2)*(fan?1.15:1)); gl.uniform3f(loc.uColor,col[0],col[1],col[2]); gl.uniform1f(loc.uFlicker,flick);
       // пойдевор (айланмайди)
-      draw(baseBuf,baseSeed,baseP.length/3,M.mul(proj,M.mul(view,M.ry(tNow*.15))),{ampK:.15,size:.75,scan:0,alpha:.55});
+      if(!fan) draw(baseBuf,baseSeed,baseP.length/3,M.mul(proj,M.mul(view,M.ry(tNow*.15))),{ampK:.15,size:.75,scan:0,alpha:.55});
       // асосий шакл
       gl.bindBuffer(gl.ARRAY_BUFFER,bufMain); gl.bufferSubData(gl.ARRAY_BUFFER,0,cur);
-      draw(bufMain,bufSeed,N,M.mul(proj,M.mul(view,model)),{ampK:1,size:1,scan:.25,alpha:1});
+      draw(bufMain,bufSeed,N,M.mul(proj,M.mul(view,model)),{ampK:1,size:1,scan:manual?3/loopT:.25,alpha:1});
       // орбита ҳалқалари
-      rings.forEach(r=>{ const m = M.mul(M.ry(rotY*r.sp*2+tNow*r.sp), M.mul(M.rx(r.tilt[0]), M.rz(r.tilt[1])));
+      rings.forEach(r=>{ const m = M.mul(M.ry(manual ? tNow*pi2/loopT*(r.sp>0?2:-2) : rotY*r.sp*2+tNow*r.sp), M.mul(M.rx(r.tilt[0]), M.rz(r.tilt[1])));
         draw(r.buf,r.seed,r.p.length/3,M.mul(proj,M.mul(view,M.mul(M.tr(0,.12,0),m))),{ampK:.3,size:.7,scan:0,alpha:.5}); });
     } else {
       // 2D захира режими
@@ -510,7 +553,6 @@ const Holo = (() => {
         c2d.globalAlpha=.35+.5*seed[i]; c2d.fillRect((sx*.5+.5)*W,(1-(sy*.5+.5))*H,1.6*dpr,1.6*dpr); }
       c2d.globalAlpha=1;
     }
-    requestAnimationFrame(frame);
   }
   const colorTheme = () => COLORS[themeColor] || COLORS.cyan;
 
@@ -531,7 +573,8 @@ const Holo = (() => {
     colorRGB(){ return locked?COLORS.red:colorTheme(); },
     kick(v=.6){ kick=Math.min(1.4,kick+v); }, glitchNow(){ glitch=1; },
     setSpin(v){ autoSpin=!!v; }, zoomBy(f){ zoom=Math.max(.6,Math.min(2.2,zoom*f)); },
-    _debug(){ return {gl:!!gl, amp, st, shape}; }
+    setFan(v,T){ fan=!!v; if(T) loopT=T; }, manualStep(dt){ manual=true; tick(dt); }, resetTime(){ tNow=0; },
+    _debug(){ return {gl:!!gl, amp, st, shape, fan, manual}; }
   });
   requestAnimationFrame(frame);
   return api;
@@ -647,9 +690,17 @@ setInterval(()=>{ const d=new Date(), p=n=>String(n).padStart(2,"0"); $("teleR")
  *  ЭГА ВА ҚУЛФ (фақат эгасига бўйсуниш)
  * ==================================================================== */
 const TL = {"а":"a","б":"b","в":"v","г":"g","д":"d","е":"e","ж":"j","з":"z","и":"i","й":"y","к":"k","л":"l","м":"m","н":"n","о":"o","п":"p","р":"r","с":"s","т":"t","у":"u","ф":"f","х":"h","ц":"ts","ч":"ch","ш":"sh","щ":"sh","э":"e","ю":"yu","я":"ya","ы":"i","ў":"o","қ":"k","ғ":"g","ҳ":"h","ё":"e"};
-function normPhrase(s){
+function normPhraseV1(s){
   s = String(s).toLowerCase().replace(/['’ʻʼ`‘´ъь]/g,"").replace(/[а-яёўқғҳ]/g,c=>TL[c]||"");
   return s.replace(/q/g,"k").replace(/x/g,"h").replace(/w/g,"v").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+}
+// v2: айтилган рақам сўзлари («бир икки уч тўрт») ва «1 2 3 4» ёзувлари бир хил «1234» бўлади
+const NUMW = {0:["nol","nul","nolga","zero","noll"],1:["bir","odin","one"],2:["ikki","dva","two"],3:["uch","tri","three"],4:["tort","chetyre","four"],
+  5:["besh","pyat","five"],6:["olti","shest","six"],7:["yetti","etti","sem","seven"],8:["sakkiz","vosem","eight"],9:["tokkiz","devyat","nine"]};
+const NUMMAP = Object.create(null); for(const d in NUMW) NUMW[d].forEach(w=>NUMMAP[w]=d);
+function normPhrase(s){
+  const v1 = normPhraseV1(s);
+  return v1.split(" ").map(w=>NUMMAP[w]??w).join(" ").replace(/(\d)\s+(?=\d)/g,"$1").replace(/(\d)\s+(?=\d)/g,"$1");
 }
 const skeleton = n => n.replace(/[aeiouy]/g,"").replace(/(.)\1+/g,"$1");
 const b64e = u => btoa(String.fromCharCode(...u)), b64d = s => Uint8Array.from(atob(s),c=>c.charCodeAt(0));
@@ -685,8 +736,8 @@ function unlockOK(){
 }
 async function tryUnlock(texts, src){
   if(Date.now() < lockUntil){ const s=Math.ceil((lockUntil-Date.now())/1000); if(src!=="voice"||Date.now()-lastLockedMsg>8000){ lastLockedMsg=Date.now(); reply(t("tooMany",s)); } return; }
-  const words = owner.words, cands = new Set();
-  for(const raw of texts){ const w = normPhrase(raw).split(" ").filter(Boolean);
+  const words = owner.words, cands = new Set(), nf = owner.v===2 ? normPhrase : normPhraseV1;
+  for(const raw of texts){ const w = nf(raw).split(" ").filter(Boolean);
     if(w.length === words) cands.add(w.join(" "));
     for(let i=0; i+words<=w.length && cands.size<14; i++) cands.add(w.slice(i,i+words).join(" ")); }
   let ok = false;
@@ -719,7 +770,7 @@ $("gSave").onclick = async () => {
   if(p1 !== p2) return $("gateErr").textContent = t("gErrMatch");
   if(skeleton(p1).replace(/ /g,"").length < 3) return $("gateErr").textContent = t("gErrCons");
   const salt = b64e(crypto.getRandomValues(new Uint8Array(16)));
-  owner = { name:$("gName").value.trim(), salt, words:p1.split(" ").length, hash:await hashPhrase(p1,salt), hash2:await hashPhrase(skeleton(p1),salt) };
+  owner = { v:2, name:$("gName").value.trim(), salt, words:p1.split(" ").length, hash:await hashPhrase(p1,salt), hash2:await hashPhrase(skeleton(p1),salt) };
   store.set("jv_owner",JSON.stringify(owner)); $("ownerName").value = owner.name;
   $("gate").classList.remove("show"); locked = false; touch(); lockUI(); chime("ok"); reply(t("ownerSaved"));
 };
@@ -757,7 +808,7 @@ function stopRecognition(){ clearTimeout(restartTimer); if(rec){ const r=rec; re
 function updateMic(){ $("mic").classList.toggle("on",active); }
 $("mic").onclick = () => {
   if(!SR){ addMsg("sys",t("noSR")); return; }
-  active = !active; updateMic(); chime(active?"on":"off");
+  active = !active; updateMic(); chime(active?"on":"off"); store.set("jv_active",active?"1":"0");
   if(active) startRecognition(); else { stopRecognition(); stopSpeaking(); setState(locked?"locked":"idle"); }
 };
 $("hush").onclick = stopSpeaking;
@@ -821,6 +872,7 @@ const SITE_WORDS = { youtube:["youtube","ютуб","ютьюб","yutub"], google
 async function route(s, raw){
   const tk = tokensOf(s);
   setState("thinking");
+  stopShow();
   const done = () => { if(!speaking) setState(active?"listening":"idle"); };
 
   // --- ҳолограмма бошқаруви (энг аввал: «айланишни тўхтат» жимлик буйруғи билан чалкашмасин) ---
@@ -832,6 +884,14 @@ async function route(s, raw){
   const shapeHit = SHAPES.find(k => tokHas(tk,SHAPE_WORDS[k]));
   if(shapeHit && has(s,W.holoVerb)){ return reply(t("holoShow",L[lang].shapes[shapeHit]),{shape:shapeHit}); }
 
+  // --- вентилятор режими, шоу, секундомер ---
+  if(has(s,["вентилятор режим","ventilyator rejim","fan mode","режим вентилятор","ventilyator rejimi"])){ setFanMode(true); return reply(t("fanOn")); }
+  if(has(s,["холограмма шоу","голограмма шоу","hologram show","холограммалар шоу","hologramma shou","hologram shou","шоу голограмм"])){ startShow(); return reply(t("showOn")); }
+  if(tokHas(tk,["секундомер","stopwatch","kronometr","хронометр"])){
+    if(has(s,["бошла","boshla","старт","start","запусти","ишга"])){ swT0 = Date.now(); return reply(t("swStart")); }
+    if(!swT0) return reply(t("swNone"));
+    const el = Math.round((Date.now()-swT0)/1000); swT0 = 0; return reply(t("swStop",fmtDur(el)||"0"));
+  }
   if(has(s,W.stop)){ stopSpeaking(); addMsg("bot",t("stop")); done(); return; }
   if(tokHas(tk,["lock$","lockdown$","кулфла","qulfla","заблок","блокир"])){ return lockNow(); }
 
@@ -848,6 +908,24 @@ async function route(s, raw){
     setTimeout(()=>{ chime("ok"); setTimeout(()=>chime("ok"),600); if(!locked) reply(msg?t("remind",msg):t("timerDone")); }, secs*1000);
     return reply(t("timerSet",fmtDur(secs)));
   }
+  // --- уйғотгич ---
+  if(has(s,["уйгот","uygot","будильник","разбуди","alarm","wake me"])){
+    let ts = 0;
+    if(tm && has(s,["через","дан кейин","dan keyin","кейин","keyin"," in ","after"])){ ts = Date.now() + (+tm[1])*(/сония|секунд|sekund|soniya|sec/.test(tm[2])?1:/соат|час|soat|hour/.test(tm[2])?3600:60)*1000; }
+    else { const m = s.match(/(\d{1,2})(?:[:. ](\d{2}))?/);
+      if(m && +m[1] < 24){ let h = +m[1]; const mi = m[2] ? +m[2] : 0;
+        if(has(s,["кеч","kech","вечер","pm","evening","тун"]) && h < 12) h += 12;
+        const d = new Date(); d.setHours(h,mi,0,0); if(d <= new Date()) d.setDate(d.getDate()+1); ts = d.getTime(); } }
+    if(!ts) return reply(t("alarmBad"));
+    const al = JSON.parse(store.get("jv_alarms","[]")); al.push(ts); store.set("jv_alarms",JSON.stringify(al)); armAlarm(ts);
+    const d = new Date(ts); return reply(t("alarmSet",`${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`));
+  }
+  // --- хотира (билимлар базаси) ---
+  const kbm = raw.match(/(?:билиб\s+[қк][ўу]й|bilib\s+qo['’ʻ]?y|эсингда\s+тут|esingda\s+tut|знай,?\s+что|запомни,?\s+что|remember\s+that|learn\s+that)[:,\s]+(.+)/i);
+  if(kbm){ const fact = kbm[1].trim(); kbSet(kbFacts().concat(fact)); return reply(t("kbSaved",fact)); }
+  if(has(s,["хотира","xotira","память","memory"]) && has(s,W.clearWord)){ kbSet([]); return reply(t("kbCleared")); }
+  if(has(s,["нима биласан","nima bilasan","хотирам","xotiram","что ты знаешь","what do you know","мои факты","нима бор хотира"])){
+    const f = kbFacts(); return f.length ? reply(t("kbList",f.join("; "))) : reply(t("kbEmpty")); }
   // --- ёзувлар ---
   if(has(s,W.notes)){
     const list = JSON.parse(store.get("jv_notes","[]"));
@@ -861,6 +939,7 @@ async function route(s, raw){
   if(has(s,W.time) || (tokHas(tk,["соат","soat","вакт","vaqt","время","час$"]) && tokHas(tk,["неч","qanch","канч","сколько","нечи"]))){ const d=new Date(); return reply(t("time",d.getHours(),String(d.getMinutes()).padStart(2,"0"))); }
   if(has(s,W.date)){ const d=new Date(), l=L[lang]; return reply(t("date",`${d.getDate()} ${l.months[d.getMonth()]}, ${l.days[d.getDay()]}`)); }
   if(has(s,W.weather)) return weather();
+  if(has(s,["намоз","namoz","молитв","namaz","prayer time","азан","azan"])) return prayer();
   if(tokHas(tk,["курс","kurs","rate$","валют","exchange"])) return currency(s);
   if(has(s,W.battery)) return battery();
   if(has(s,W.full)){ try{ await document.documentElement.requestFullscreen(); }catch{} return reply(t("fullscreen")); }
@@ -891,6 +970,9 @@ async function route(s, raw){
   // --- калькулятор ---
   const calc = tryCalc(s); if(calc!==null) return reply(t("calc",calc));
 
+  // --- хотира ва ўрнатилган билимлар ---
+  const bi = BUILTIN.find(b=>has(s,b.k)); if(bi) return reply(bi.f());
+  const kb = kbSearch(s); if(kb) return reply(kb);
   // --- Википедия: «… ким», «… нима», «who is …» ---
   const topic = extractTopic(s, tk);
   const key = $("apikey").value.trim();
@@ -902,6 +984,62 @@ async function route(s, raw){
 }
 
 function openUrl(url){ window.open(url,"_blank","noopener"); }
+
+/* --- хотира --- */
+const kbFacts = () => store.get("jv_kb","").split("\n").map(x=>x.trim()).filter(Boolean);
+function kbSet(list){ store.set("jv_kb",list.join("\n")); if($("kbText")) $("kbText").value = list.join("\n"); }
+const KB_STOP = new Set(["ким","нима","кандай","канча","кайси","мен","сен","менинг","бу","ва","учун","хакида","who","what","the","my","this","что","кто","как","где","когда","мой","моя","мое","нинг","билан","айт","айтинг","tell","say"]);
+function kbSearch(s){
+  const q = tokensOf(s).filter(w=>w.length>=3 && !KB_STOP.has(w));
+  if(!q.length) return null;
+  let best = null, bs = 0;
+  for(const f of kbFacts()){
+    const ft = tokensOf(fold(f)).filter(x=>x.length>=3); let sc = 0;
+    for(const w of q){ const a = w.slice(0,Math.max(3,w.length-2));
+      if(ft.some(x=>x.startsWith(a) || w.startsWith(x.slice(0,Math.max(3,x.length-2))))) sc++; }
+    if(sc > bs){ bs = sc; best = f; }
+  }
+  return (bs >= Math.min(2,q.length)) ? best : null;
+}
+const BUILTIN = [
+  { k:["вентилятор","ventilyator","hologram fan","pd13","3d displayer","5d displayer","tf карта","tf card"], f:()=>t("fanInfo") },
+  { k:["ким яратган","ким яратди","кто тебя создал","who made you","who created you","kim yaratgan","kim yaratdi","кто тебя сделал"], f:()=>t("madeBy") }
+];
+
+/* --- уйғотгич, секундомер, шоу --- */
+let swT0 = 0, showTimer = null;
+function armAlarm(ts){
+  const ms = ts - Date.now(); if(ms <= 0 || ms > 2147000000) return;
+  setTimeout(()=>{
+    try{ store.set("jv_alarms",JSON.stringify(JSON.parse(store.get("jv_alarms","[]")).filter(x=>x!==ts))); }catch{}
+    for(let i=0;i<6;i++) setTimeout(()=>chime("ok"),i*900);
+    if(locked) speak(t("alarmRing")); else reply(t("alarmRing"));
+  }, ms);
+}
+function startShow(){ stopShow(); let i = SHAPES.indexOf(Holo.shape);
+  const step = () => { i = (i+1)%SHAPES.length; showShape(SHAPES[i]); };
+  showTimer = setInterval(step,6500); step(); }
+function stopShow(){ if(showTimer){ clearInterval(showTimer); showTimer = null; } }
+
+/* --- вентилятор режими --- */
+function setFanMode(on){
+  if(on && locked) return;
+  document.body.classList.toggle("fan",!!on); Holo.setFan(!!on);
+  if(on){ try{ const f = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if(f && f.catch) f.catch(()=>{}); }catch{} }
+  else { try{ const f = document.fullscreenElement && document.exitFullscreen(); if(f && f.catch) f.catch(()=>{}); }catch{} }
+}
+$("fanBtn").onclick = () => setFanMode(true);
+$("fanExit").onclick = () => { setFanMode(false); reply(t("fanOff")); };
+
+async function prayer(){
+  addMsg("sys",t("weatherWait"));
+  try{
+    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+    const j = await (await fetch(`https://api.aladhan.com/v1/timings?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&method=3`)).json();
+    const tm = j.data.timings, keys = ["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"], names = L[lang].prayerN;
+    return reply(t("prayer",keys.map((k,i)=>`${names[i]} ${tm[k]}`).join(", ")));
+  }catch{ return reply(t("prayerErr")); }
+}
 function suggestShape(text){ const tk=tokensOf(fold(text)); return SHAPES.find(k=>k!=="core"&&tokHas(tk,SHAPE_WORDS[k])) || null; }
 function extractTopic(s,tk){
   const isAsk = has(s,W.ask) || tokHas(tk,["ким$","kim$","нима$","nima$","кто$","что$"]);
@@ -967,7 +1105,7 @@ async function askClaude(text,key){
       headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
       body:JSON.stringify({
         model:$("model").value, max_tokens:500,
-        system:`You are Jarvis, a loyal, witty holographic voice assistant who serves only your owner${ownerName()?` (${ownerName()})`:""}. Reply in ${names[lang]} unless the user speaks another language. Your answer is read aloud: 1-3 short conversational sentences, no markdown, lists, emoji or URLs. Current date/time: ${d.toString()}. You control a 3D hologram. If the topic fits one of these shapes, end your answer with a tag like [[holo:globe]] — allowed: ${SHAPES.join(", ")}. Omit the tag if none fits.`,
+        system:`You are Jarvis, a loyal, witty holographic voice assistant who serves only your owner${ownerName()?` (${ownerName()})`:""}. Reply in ${names[lang]} unless the user speaks another language. Your answer is read aloud: 1-3 short conversational sentences, no markdown, lists, emoji or URLs. Current date/time: ${d.toString()}. You control a 3D hologram. If the topic fits one of these shapes, end your answer with a tag like [[holo:globe]] — allowed: ${SHAPES.join(", ")}. Omit the tag if none fits.${store.get("jv_persona","")?` Persona and preferences from the owner: ${store.get("jv_persona","")}.`:""}${kbFacts().length?` Owner's private knowledge base (use it when relevant): ${kbFacts().join("; ").slice(0,1800)}.`:""}`,
         messages:history })
     });
     const j = await res.json(); if(!res.ok) throw new Error(j.error?.message||res.status);
@@ -1001,7 +1139,11 @@ $("color").onchange = () => { Holo.setColor($("color").value); store.set("jv_col
 $("apikey").onchange = () => store.set("jv_key",$("apikey").value.trim());
 $("model").onchange = () => store.set("jv_model",$("model").value);
 $("clear").onclick = () => { history=[]; $("log").innerHTML=""; };
+$("persona").onchange = () => store.set("jv_persona",$("persona").value.trim());
+$("kbText").onchange = () => kbSet($("kbText").value.split("\n").map(x=>x.trim()).filter(Boolean));
 
+$("persona").value = store.get("jv_persona",""); $("kbText").value = kbFacts().join("\n");
+try{ JSON.parse(store.get("jv_alarms","[]")).forEach(armAlarm); }catch{}
 $("lang").value = lang; $("wake").checked = store.get("jv_wake","0")==="1"; $("mute").checked = store.get("jv_mute","0")==="1";
 $("rate").value = store.get("jv_rate","1"); $("pitch").value = store.get("jv_pitch","0.85"); $("apikey").value = store.get("jv_key","");
 $("model").value = store.get("jv_model","claude-haiku-4-5-20251001"); $("autolock").value = store.get("jv_autolock","10");
@@ -1014,7 +1156,13 @@ if(!SR) showWarn(t("noSR"));
 locked = !!owner; document.documentElement.lang = lang; lockUI();
 if(locked){ addMsg("sys",t("lockedMsg")); setState("locked"); }
 else { setState("idle"); addMsg("bot", ownerName() ? t("hello",ownerName()) : t("helloAnon")); if(!owner && store.get("jv_skip","0")!=="1") openGate("first"); }
-window.__jarvis = { Holo, route, handleInput, get locked(){ return locked; }, get owner(){ return owner; } };
+// Alice сингари: аввал микрофон ёқилган бўлса, саҳифани биринчи босганда ўзи қайта ёқилади (браузер қоидаси: босиш керак)
+document.addEventListener("pointerdown",e=>{
+  if(!SR || active || store.get("jv_active","0")!=="1" || e.target.closest("#mic")) return;
+  active = true; updateMic(); startRecognition();
+},{once:true,capture:true});
+if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(()=>{});
+window.__jarvis = { setFanMode, kbSearch, kbFacts, normPhrase, Holo, route, handleInput, get locked(){ return locked; }, get owner(){ return owner; } };
 </script>
 </body>
 </html>
