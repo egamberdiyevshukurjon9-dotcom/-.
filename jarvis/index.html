@@ -71,6 +71,8 @@
   .small-btn{border:1px solid var(--cyan);color:var(--cyan);background:transparent;border-radius:14px;padding:3px 10px;cursor:pointer;font-size:13px}
   textarea{width:100%;min-height:90px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font:14px/1.4 system-ui,sans-serif;resize:vertical}
   /* ---- вентилятор режими: қора фонда фақат ядро ---- */
+  .updbar{display:flex;gap:10px;align-items:center;justify-content:center;padding:6px 12px;background:#0d2a3b;border-bottom:1px solid var(--cyan);font-size:13px}
+  .updbar[hidden]{display:none}
   #fanExit{display:none}
   body.fan{background:#000}
   body.fan header,body.fan main,body.fan .beam,body.fan .c,body.fan .tele,body.fan #holoLabel,body.fan #fallbackMsg,body.fan #stage::after{display:none}
@@ -95,6 +97,7 @@
   <h1>ЖАРВИС</h1>
   <div class="right"><span id="netStatus"></span><button id="fanBtn" class="small-btn" title="Вентилятор режими">⌬</button><button id="lockBadge" title="Қулф">🔓</button></div>
 </header>
+<div id="updBar" class="updbar" hidden><span id="updText"></span><button id="updGo" class="small-btn"></button></div>
 
 <section id="stage">
   <canvas id="holo"></canvas>
@@ -156,12 +159,14 @@
         <option value="claude-opus-5-5">Opus (кучли)</option>
       </select></label>
       <button class="small" id="clear">Тарихни тозала</button>
+      <button class="small" id="diag">Овозни текшир</button>
     </div>
     <div class="row"><label class="grow" style="flex-direction:column;align-items:stretch">Жарвис шахсияти (ихтиёрий, Claude учун)
       <input id="persona" type="text" placeholder="масалан: Мен Тошкентда яшайман, қисқа ва аниқ жавоб бер"></label></div>
     <div class="row"><label class="grow" style="flex-direction:column;align-items:stretch">Жарвис хотираси: ҳар қатор — битта маълумот
       <textarea id="kbText" placeholder="Ойимнинг туғилган куни — 12 март&#10;Wi-Fi номи — Home123"></textarea></label></div>
     <div class="help">Калит, парол ҳэши ва ёзувлар фақат шу браузерда (localStorage) сақланади. Парол очиқ ҳолда сақланмайди (PBKDF2 ҳэш).</div>
+    <div class="help">Версия <b id="verSpan"></b> · <button class="small-btn" id="updCheck">Янгиланишни текшир</button></div>
     <div class="help" id="cmdHelp"></div>
   </details>
 </main>
@@ -217,7 +222,7 @@ uz:{ speech:"uz-UZ", fallbackSpeech:"ru-RU",
   rate:"1 {0} тахминан {1} сўм", rateErr:"Курсни олиб бўлмади.",
   battery:"Батарея {0} фоиз{1}", charging:", зарядланяпти", noBattery:"Бу қурилмада батарея маълумоти йўқ.",
   noteSaved:"Ёзиб қўйдим: {0}", noteEmpty:"Ёзувлар йўқ.", notesRead:"Ёзувларингиз: {0}", notesCleared:"Ёзувлар тозаланди.",
-  heads:"Тоҷ чиқди", tails:"Хат чиқди", dice:"Кубик: {0}", random:"Тасодифий сон: {0}",
+  heads:"Герб чиқди", tails:"Рақам чиқди", dice:"Кубик: {0}", random:"Тасодифий сон: {0}",
   holoShow:"Ҳолограммада: {0}", holoColor:"Ранг ўзгартирилди.", spinOn:"Ҳолограмма айланяпти.", spinOff:"Айланиш тўхтатилди.", zoomIn:"Яқинлаштирдим.", zoomOut:"Узоқлаштирдим.",
   langSet:"Хўп, ўзбекча гапираман.", fullscreen:"Тўлиқ экран.",
   kbSaved:"Билиб қўйдим: {0}", kbEmpty:"Хотирам бўш. «билиб қўй …» дейишингиз мумкин.", kbList:"Мен билганларим: {0}", kbCleared:"Хотира тозаланди.",
@@ -321,6 +326,13 @@ en:{ speech:"en-US", fallbackSpeech:"en-US",
   units:{s:"seconds",m:"minutes",h:"hours"}, cur:{usd:"dollar",eur:"euro",rub:"ruble"} }
 };
 let lang = store.get("jv_lang","uz"); if(!L[lang]) lang="uz";
+const tri = (uz,ru,en) => ({uz,ru,en})[lang];
+const APP_VERSION = "2.1.0";
+const APP_NOTES = {
+  uz:["овоз жавобидаги хатолар тузатилди (ўз овозини эшитиши, такрорий жавоблар, ойдин хато хабарлари)","лотин ёзувидаги ўзбекча матн тўғри ўқилади","вазифалар, қўнғироқ, йўл кўрсатиш, бирликлар, фоиз ва илдиз ҳисоби, брифинг","овозни текшириш ва ўзи янгиланиш"],
+  ru:["исправлены ошибки голосовых ответов (слышал сам себя, повторы, понятные сообщения об ошибках)","узбекский текст на латинице читается правильно","задачи, звонок, маршрут, единицы, проценты и корень, брифинг","проверка голоса и автообновление"],
+  en:["fixed voice reply bugs (hearing itself, duplicates, clear error messages)","Latin-script Uzbek is read correctly","tasks, calling, directions, unit/percent/root math, briefing","voice check and auto-update"]
+};
 const t = (k,...a) => String(L[lang][k] ?? L.en[k] ?? k).replace(/\{(\d)\}/g,(_,i)=>a[i]);
 const fmtDur = sec => { const u=L[lang].units,h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;
   return [h&&`${h} ${u.h}`,m&&`${m} ${u.m}`,s&&`${s} ${u.s}`].filter(Boolean).join(" "); };
@@ -583,7 +595,7 @@ const Holo = (() => {
 /* ====================================================================
  *  Овоз чиқариш (TTS), товушлар
  * ==================================================================== */
-let voices = [], speaking = false, speakToken = 0, AC = null;
+let voices = [], speaking = false, speakToken = 0, AC = null, lastSpeakEnd = 0, convo = false, awakeUntil = 0, noKeyShown = 0;
 function loadVoices(){ try{ voices = speechSynthesis.getVoices(); }catch{ voices=[]; } fillVoiceSelect(); }
 if("speechSynthesis" in window){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 
@@ -607,7 +619,35 @@ function chunkText(s){
   for(const p of parts){ if((cur+p).length > 170 && cur){ out.push(cur.trim()); cur = p; } else cur += p; }
   if(cur.trim()) out.push(cur.trim()); return out;
 }
-function afterSpeak(){ setState(active?"listening":(locked?"locked":"idle")); if(active) startRecognition(); }
+// гапириб бўлгач микрофонни дарҳол эмас, сал кейин ёқамиз: акс ҳолда Жарвис ўз овозининг «думини» эшитиб, ўзига ўзи жавоб беради
+function afterSpeak(){
+  lastSpeakEnd = Date.now(); if(convo){ awakeUntil = Date.now()+10000; convo = false; }
+  setState(active?"listening":(locked?"locked":"idle"));
+  if(active){ clearTimeout(restartTimer); restartTimer = setTimeout(startRecognition,450); }
+}
+/* --- овоз учун матн: русча овоз ўзбекча махсус ҳарфларни ва лотин ёзувини ўқий олмайди --- */
+const BRAND = {youtube:"ютуб",google:"гугл",gmail:"джимейл",telegram:"телеграм",instagram:"инстаграм",facebook:"фейсбук",whatsapp:"вотсап",tiktok:"тикток",github:"гитхаб",wikipedia:"википедия",claude:"клод",jarvis:"жарвис",olx:"олх",wifi:"вайфай",maps:"мэпс",kun:"кун"};
+const LAT2CYR = [["sh","ш"],["ch","ч"],["ng","нг"],["yo","ё"],["yu","ю"],["ya","я"],["ye","е"],["ts","ц"]];
+const LAT1 = {a:"а",b:"б",c:"к",d:"д",e:"е",f:"ф",g:"г",h:"х",i:"и",j:"ж",k:"к",l:"л",m:"м",n:"н",o:"о",p:"п",q:"к",r:"р",s:"с",t:"т",u:"у",v:"в",w:"в",x:"х",y:"й",z:"з"};
+function latWordToCyr(w){
+  const lw = w.toLowerCase().replace(/[ʻʼ’‘`´]/g,"'"); if(BRAND[lw]) return BRAND[lw];
+  let out = "", i = 0;
+  while(i < lw.length){
+    const two = lw.slice(i,i+2);
+    if(two==="o'"||two==="g'"){ out += two[0]==="o" ? "у" : "г"; i += 2; continue; }
+    const hit = LAT2CYR.find(([a])=>a===two); if(hit){ out += hit[1]; i += 2; continue; }
+    const c = lw[i]; out += c==="'" ? "" : (LAT1[c]||c); i++;
+  }
+  return (w[0]!==w[0].toLowerCase()) ? out.charAt(0).toUpperCase()+out.slice(1) : out;
+}
+function forRuVoice(x){
+  x = x.replace(/[ўЎқҚғҒҳҲ]/g,c=>({"ў":"у","Ў":"У","қ":"к","Қ":"К","ғ":"г","Ғ":"Г","ҳ":"х","Ҳ":"Х"})[c]);
+  return x.replace(/[A-Za-z][A-Za-z'’ʻʼ‘`´]*/g,w=>latWordToCyr(w));
+}
+const CYR2LAT = {а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"j",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"x",ц:"s",ч:"ch",ш:"sh",щ:"sh",ъ:"'",ы:"i",ь:"",э:"e",ю:"yu",я:"ya",ў:"o'",қ:"q",ғ:"g'",ҳ:"h"};
+function forUzVoice(x){   // ўзбек овози лотин имлосида ўқийди
+  return x.replace(/[А-Яа-яЁёЎўҚқҒғҲҳ]/g,c=>{ const l=CYR2LAT[c.toLowerCase()]; if(l===undefined) return c; return c===c.toLowerCase() ? l : l.charAt(0).toUpperCase()+l.slice(1); });
+}
 function stopSpeaking(){
   speakToken++; try{ speechSynthesis.cancel(); }catch{}
   if(speaking){ speaking=false; afterSpeak(); }
@@ -615,9 +655,10 @@ function stopSpeaking(){
 function speak(text){
   return new Promise(resolve=>{
     const clean = String(text).replace(/\s+/g," ").trim();
-    if($("mute").checked || !("speechSynthesis" in window) || !clean){ setState(active?"listening":(locked?"locked":"idle")); resolve(); return; }
+    if($("mute").checked || !("speechSynthesis" in window) || !clean){ if(convo){ awakeUntil = Date.now()+10000; convo = false; } setState(active?"listening":(locked?"locked":"idle")); resolve(); return; }
     try{ speechSynthesis.cancel(); }catch{}
-    const my = ++speakToken, chunks = chunkText(clean), {voice,lang:vl} = pickVoice();
+    const my = ++speakToken, {voice,lang:vl} = pickVoice();
+    const spoken = lang==="uz" ? (voice && /^uz/i.test(vl) ? forUzVoice(clean) : forRuVoice(clean)) : clean, chunks = chunkText(spoken);
     speaking = true; setState("speaking"); stopRecognition();
     let i = 0;
     const next = () => {
@@ -732,7 +773,7 @@ function lockNow(silent){
 }
 function unlockOK(){
   locked = false; fails = 0; touch(); lockUI(); Holo.glitchNow(); showShape("core"); chime("ok");
-  $("log").innerHTML = ""; reply(t("unlocked",ownerName()||""));
+  $("log").innerHTML = ""; reply(t("unlocked",ownerName()||"")); flushNotes();
 }
 async function tryUnlock(texts, src){
   if(Date.now() < lockUntil){ const s=Math.ceil((lockUntil-Date.now())/1000); if(src!=="voice"||Date.now()-lastLockedMsg>8000){ lastLockedMsg=Date.now(); reply(t("tooMany",s)); } return; }
@@ -747,7 +788,7 @@ async function tryUnlock(texts, src){
   }
   if(ok){ unlockOK(); return; }
   // овозда тасодифий гапларни хато деб санамаймиз — фақат «Жарвис» айтилса ёки ёзилганда
-  const addressed = src!=="voice" || texts.some(x=>WAKE.some(w=>fold(x).includes(w)));
+  const addressed = src!=="voice" || texts.some(x=>findWake(fold(x)));
   if(!addressed) return;
   fails++; chime("bad");
   if(fails >= 5){ lockUntil = Date.now()+30000; fails = 0; reply(t("tooMany",30)); }
@@ -785,30 +826,60 @@ setInterval(()=>{ const m = +$("autolock").value; if(owner && !locked && m>0 && 
  *  Овозни таниб олиш (STT)
  * ==================================================================== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null, restartTimer = null;
+const ANDROID = /Android/i.test(navigator.userAgent);
+let rec = null, restartTimer = null, srLangOverride = "", srBackoff = 0, srFast = 0, srStartedAt = 0, lastFinal = {t:"",at:0}, srErrAt = {};
+function srNote(key,msg){ if(!srErrAt[key] || Date.now()-srErrAt[key] > 30000){ srErrAt[key] = Date.now(); addMsg("sys",msg); } }
 function startRecognition(){
   if(!SR || !active || speaking || rec) return;
-  rec = new SR(); rec.lang = L[lang].speech; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 3;
+  rec = new SR(); rec.lang = srLangOverride || L[lang].speech; rec.continuous = !ANDROID; rec.interimResults = true; rec.maxAlternatives = 3;
+  srStartedAt = Date.now();
   rec.onstart = () => { if(!speaking) setState("listening"); };
   rec.onresult = e => {
+    if(speaking) return;
     let interim = "";
     for(let i=e.resultIndex;i<e.results.length;i++){
       const r = e.results[i];
-      if(r.isFinal){ $("interim").textContent = ""; const alts = Array.from(r).map(a=>a.transcript.trim()).filter(Boolean); handleInput(alts[0]||"","voice",alts); }
-      else { interim += r[0].transcript; Holo.kick(.25); }
+      if(r.isFinal){
+        $("interim").textContent = "";
+        const alts = Array.from(r).map(a=>a.transcript.trim()).filter(Boolean); if(!alts.length) continue;
+        if(alts[0]===lastFinal.t && Date.now()-lastFinal.at < 2500) continue;      // Android такрорий натижалари
+        lastFinal = {t:alts[0], at:Date.now()};
+        handleInput(alts[0],"voice",alts);
+      } else { interim += r[0].transcript; Holo.kick(.25); }
     }
     if(interim) $("interim").textContent = locked ? "•••" : interim;
   };
-  rec.onerror = e => { if(e.error==="not-allowed"||e.error==="service-not-allowed"){ active=false; updateMic(); addMsg("sys",t("micDenied")); } };
+  rec.onerror = e => {
+    const er = e.error;
+    if(er==="not-allowed"||er==="service-not-allowed"){ active=false; updateMic(); store.set("jv_active","0"); keepAwake(false); addMsg("sys",t("micDenied")); }
+    else if(er==="audio-capture"){ active=false; updateMic(); keepAwake(false); addMsg("sys",tri("Микрофон топилмади ёки бошқа илова ишлатяпти.","Микрофон не найден или занят другим приложением.","Microphone not found or used by another app.")); }
+    else if(er==="network"){ srBackoff = 4000; srNote("network",tri("Овозни таниш учун интернет керак. Алоқани текширинг.","Для распознавания речи нужен интернет. Проверьте связь.","Speech recognition needs internet. Check your connection.")); }
+    else if(er==="language-not-supported"||er==="bad-grammar"){
+      if(lang==="uz" && srLangOverride!=="ru-RU"){ srLangOverride = "ru-RU"; srNote("lang",tri("Ўзбекча овозни таниш бу қурилмада йўқ. Русчага ўтдим: буйруқларни русча айтинг.","Узбекское распознавание недоступно. Переключился на русский.","Uzbek recognition unavailable here. Switched to Russian.")); }
+    }
+    // no-speech, aborted: оддий ҳол, жим қайта ёқилади
+  };
   rec.onend = () => { rec = null; $("interim").textContent = "";
-    if(active && !speaking){ clearTimeout(restartTimer); restartTimer = setTimeout(startRecognition,250); } else if(!speaking) setState(locked?"locked":"idle"); };
-  try{ rec.start(); }catch{ rec = null; }
+    if(active && !speaking){
+      srFast = (Date.now()-srStartedAt < 900) ? Math.min(srFast+1,5) : 0;             // тез-тез узилса, пауза узайтирилади
+      const delay = Math.max(srBackoff, srFast ? 250*Math.pow(2,srFast) : 250); srBackoff = 0;
+      clearTimeout(restartTimer); restartTimer = setTimeout(startRecognition,delay);
+    } else if(!speaking) setState(locked?"locked":"idle"); };
+  try{ rec.start(); }catch{ rec = null; if(active){ clearTimeout(restartTimer); restartTimer = setTimeout(startRecognition,1200); } }
 }
 function stopRecognition(){ clearTimeout(restartTimer); if(rec){ const r=rec; rec=null; r.onend=null; try{ r.abort(); }catch{} } }
 function updateMic(){ $("mic").classList.toggle("on",active); }
+let wakeLock = null;
+async function keepAwake(on){   // микрофон ёқиқ турганда экран ўчмасин (Алиса сингари «доимий тингловчи»)
+  try{
+    if(on && "wakeLock" in navigator && !wakeLock){ wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release",()=>{ wakeLock = null; }); }
+    else if(!on && wakeLock){ await wakeLock.release(); wakeLock = null; }
+  }catch{}
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden && active){ keepAwake(true); if(!speaking && !rec) startRecognition(); } });
 $("mic").onclick = () => {
   if(!SR){ addMsg("sys",t("noSR")); return; }
-  active = !active; updateMic(); chime(active?"on":"off"); store.set("jv_active",active?"1":"0");
+  active = !active; updateMic(); chime(active?"on":"off"); store.set("jv_active",active?"1":"0"); keepAwake(active);
   if(active) startRecognition(); else { stopRecognition(); stopSpeaking(); setState(locked?"locked":"idle"); }
 };
 $("hush").onclick = stopSpeaking;
@@ -817,6 +888,9 @@ $("hush").onclick = stopSpeaking;
  *  Буйруқларни қайта ишлаш
  * ==================================================================== */
 const WAKE = ["жарвис","джарвис","жарвиз","ярвис","jarvis","jarviz","djarvis","jarvys","жорвис","жарвес","harvis","чарвис"].map(fold);
+// таниш хатоларига бардош: Жарвис / Jarvis / Харвис / Гарвис / Чарвис / Джарви …
+const WAKE_RE = /^(?:jarv|zharv|djarv|harv|garv|charv|xarv|jorv|жарв|джарв|харв|гарв|чарв|ярв|жорв|зарв)[a-zа-я]{0,4}$/;
+const findWake = x => (x.split(/\s+/).find(tok => WAKE.includes(tok) || WAKE_RE.test(tok))) || null;
 
 async function handleInput(raw, src="text", alts=[raw]){
   raw = (raw||"").trim(); if(!raw) return;
@@ -825,9 +899,9 @@ async function handleInput(raw, src="text", alts=[raw]){
     return;
   }
   let s = fold(raw).replace(/[.,!?;:«»"()]/g," ").replace(/\s+/g," ").trim();
-  const w = WAKE.find(x=>s.includes(x));
-  if($("wake").checked && !w && src==="voice") return;
-  touch();
+  const w = findWake(s);
+  if($("wake").checked && src==="voice" && !w && Date.now() > awakeUntil) return;   // «Жарвис» дегандан кейин 10 сония давомида яна айтмасдан гапириш мумкин
+  touch(); if(src==="voice") convo = true;
   if(w){ s = s.replace(w,"").replace(/\s+/g," ").trim(); raw = raw.replace(new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"),"").replace(/^[\s,.!?]+/,"").trim(); }
   if(!s){ addMsg("me",raw||"…"); chime("on"); return reply(pick(L[lang].greet)); }
   addMsg("me",raw);
@@ -900,12 +974,42 @@ async function route(s, raw){
     const l = has(s,["ozbek","узбек","узбекча","uzbek"])?"uz" : has(s,["рус","rus"])?"ru" : has(s,["инглиз","ingliz","англ","english"])?"en" : null;
     if(l){ setLang(l); return reply(t("langSet")); }
   }
+  // --- товуш тезлиги, бекор қилиш, янгиланиш, диагностика, брифинг ---
+  if(has(s,["секинрок","sekinroq","медленнее","помедленнее","slower"])){ $("rate").value = Math.max(.7,(+$("rate").value||1)-.15).toFixed(2); store.set("jv_rate",$("rate").value); return reply(tri("Секинроқ гапираман.","Буду говорить медленнее.","I'll speak slower.")); }
+  if(has(s,["тезрок","tezroq","быстрее","побыстрее","faster"])){ $("rate").value = Math.min(1.4,(+$("rate").value||1)+.15).toFixed(2); store.set("jv_rate",$("rate").value); return reply(tri("Тезроқ гапираман.","Буду говорить быстрее.","I'll speak faster.")); }
+  if(has(s,["бекор","bekor","отмени","отмена","cancel"]) && has(s,["таймер","timer","taymer","будильник","уйгот","uygot","alarm"])){ cancelTimers(); return reply(tri("Бекор қилинди.","Отменено.","Cancelled.")); }
+  if(has(s,["диагностик","diagnostic","овозни текшир","овоз текшир","проверь голос","проверка голоса","проверь микрофон","микрофонни текшир","test voice","check voice","check microphone"])) return runDiag();
+  if(tokHas(tk,["янгилан","янгила$","yangilan","yangila$","обнов","update$","версия","versiya","version$"])){ return checkUpdate(true); }
+  if(has(s,["брифинг","эрталабки ахборот","кунлик ахборот","сводк","доклад","briefing","good morning","хайрли тонг","доброе утро"])) return briefing();
+
+  // --- вазифалар (to-do) ---
+  const tdAdd = raw.match(/(?:вазифа\s+[қк][ўу]ш|vazifa\s+qo['’ʻ]?sh|добавь\s+задачу|добавить\s+задачу|add\s+(?:a\s+)?task)[:,\s]+(.+)/i);
+  if(tdAdd){ const a = todoGet(); a.push({t:tdAdd[1].trim(),d:0}); todoSet(a); return reply(tri(`Вазифа қўшилди: ${tdAdd[1].trim()}`,`Задача добавлена: ${tdAdd[1].trim()}`,`Task added: ${tdAdd[1].trim()}`)); }
+  const tdDone = s.match(/(?:вазифа|vazifa|задач\w*|task)\s*(\d+)\s*(?:бажарилди|bajarildi|готов\w*|выполн\w*|done|complet\w*)/);
+  if(tdDone){ const a = todoGet(), i = +tdDone[1]-1;
+    if(!a[i]) return reply(tri("Бундай рақамли вазифа йўқ.","Нет задачи с таким номером.","No task with that number."));
+    a[i].d = 1; todoSet(a); return reply(tri(`Бажарилди: ${a[i].t}`,`Выполнено: ${a[i].t}`,`Done: ${a[i].t}`)); }
+  if(has(s,["вазифалар","vazifalar","задач","tasks"]) && has(s,W.clearWord)){ todoSet([]); return reply(tri("Вазифалар тозаланди.","Задачи очищены.","Tasks cleared.")); }
+  if(has(s,["вазифаларим","vazifalarim","мои задачи","список задач","my tasks","task list","todo list","to do list"])){
+    const a = todoGet(); if(!a.length) return reply(tri("Вазифалар йўқ.","Задач нет.","No tasks."));
+    return reply(tri("Вазифалар: ","Задачи: ","Tasks: ")+a.map((x,i)=>`${i+1}) ${x.t}${x.d?tri(" (бажарилган)"," (готово)"," (done)"):""}`).join("; ")); }
+
+  // --- қўнғироқ ва йўл кўрсатиш ---
+  const cm = s.match(/^(?:call|позвони|позвонить)\s+(.+)$/) || s.match(/^(.+?)\s*(?:га|ga)\s*(?:кунгирок|qongiroq)\s*(?:кил|qil)?$/);
+  if(cm){ const nm = cm[1].trim(), num = findPhone(nm);
+    if(!num) return reply(tri(`${nm} учун рақам топмадим. «билиб қўй ${nm} — +998…» деб ўргатинг.`,`Не нашёл номер для ${nm}. Скажите: «запомни, что ${nm} — +998…».`,`No number for ${nm}. Say: "remember that ${nm} is +998…".`));
+    setTimeout(()=>{ location.href = "tel:"+num; },900); return reply(tri(`${nm} га қўнғироқ қилинмоқда`,`Звоню: ${nm}`,`Calling ${nm}`)); }
+  const nv = s.match(/^(?:йул курсат|yol korsat|проложи маршрут до|маршрут до|как добраться до|navigate to|directions to|take me to)\s+(.+)$/) || s.match(/^(.+?)\s*(?:га|ga)\s+(?:йул курсат|yol korsat)$/);
+  if(nv){ openUrl("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(nv[1])); return reply(tri(`${nv[1]} га йўл очилмоқда`,`Открываю маршрут: ${nv[1]}`,`Opening directions to ${nv[1]}`)); }
+  const mp = s.match(/^(?:харитада|xaritada|на карте|покажи на карте|show on map|find on map|near me|якин атрофда|yaqin atrofda|рядом)\s+(.+)$/);
+  if(mp){ openUrl("https://www.google.com/maps/search/"+encodeURIComponent(mp[1])); return reply(tri(`Харитада: ${mp[1]}`,`На карте: ${mp[1]}`,`On the map: ${mp[1]}`)); }
+
   // --- таймер / эслатма ---
   const tm = s.match(/(\d+)\s*(сония|секунд|sekund|soniya|second|sec|дакика|дакик|минут|daqiqa|minute|min|соат|час|soat|hour)/);
   if((has(s,["таймер","timer","taymer","секундомер"])||has(s,W.remind)) && tm){
     const n=+tm[1], u=tm[2], secs = n*(/сония|секунд|sekund|soniya|sec/.test(u)?1:/соат|час|soat|hour/.test(u)?3600:60);
     let msg = s.replace(tm[0]," ").replace(/(таймер|timer|taymer|дан кейин|dan keyin|через|later|in|ни|эслат\w*|eslat\w*|напомни\w*|remind( me)?( to)?)/g," ").replace(/\s+/g," ").trim();
-    setTimeout(()=>{ chime("ok"); setTimeout(()=>chime("ok"),600); if(!locked) reply(msg?t("remind",msg):t("timerDone")); }, secs*1000);
+    trackTimer(setTimeout(()=>{ chime("ok"); setTimeout(()=>chime("ok"),600); if(!locked) reply(msg?t("remind",msg):t("timerDone")); }, secs*1000));
     return reply(t("timerSet",fmtDur(secs)));
   }
   // --- уйғотгич ---
@@ -968,7 +1072,11 @@ async function route(s, raw){
     for(const [k,words] of Object.entries(SITE_WORDS)) if(has(s,words)){ openUrl(SITES[k][0]); return reply(t("opening",SITES[k][1])); }
   }
   // --- калькулятор ---
-  const calc = tryCalc(s); if(calc!==null) return reply(t("calc",calc));
+  const s2 = fold(raw).replace(/(\d),(\d)/g,"$1.$2");
+  const m2 = tryMath2(s2); if(m2) return reply(m2);
+  const calc = tryCalc(s2); if(calc!==null) return reply(t("calc",calc));
+  // --- таниш хатоларига бардош: сўзлар ёзилишидан қатъи назар, энг яқин оддий буйруқни топамиз ---
+  if(!fuzzyBusy){ const fc = fuzzyIntent(s); if(fc){ fuzzyBusy = true; try{ return await route(fold(fc),fc); } finally{ fuzzyBusy = false; } } }
 
   // --- хотира ва ўрнатилган билимлар ---
   const bi = BUILTIN.find(b=>has(s,b.k)); if(bi) return reply(bi.f());
@@ -980,10 +1088,115 @@ async function route(s, raw){
   // --- Claude ---
   if(key) return askClaude(raw,key);
   if(topic) return reply(t("wikiNone"));
-  return reply(t("noKey"));
+  return reply(noKeyShown++ ? tri("Тушунмадим. Қайта айтинг ёки «ёрдам» денг.","Не понял. Повторите или скажите «помощь».","I didn't get that. Say it again or say \"help\".") : t("noKey"));
 }
 
 function openUrl(url){ window.open(url,"_blank","noopener"); }
+
+/* --- вазифалар, таймерлар --- */
+const todoGet = () => { try{ return JSON.parse(store.get("jv_todo","[]")); }catch{ return []; } };
+const todoSet = a => store.set("jv_todo",JSON.stringify(a.slice(-100)));
+const timerHandles = [];
+const trackTimer = h => { timerHandles.push(h); return h; };
+function cancelTimers(){ timerHandles.splice(0).forEach(clearTimeout); store.set("jv_alarms","[]"); }
+function findPhone(name){
+  if(/^[\d\s+]{7,}$/.test(name)) return name.replace(/\s/g,"");
+  const key = name.slice(0,Math.max(3,name.length-2));
+  for(const f of kbFacts()){ if(fold(f).includes(key)){ const m = f.match(/\+?\d[\d\s\-()]{6,}\d/); if(m) return m[0].replace(/[^\d+]/g,""); } }
+  return null;
+}
+
+/* --- бирликлар, фоиз, илдиз --- */
+const UNITS = [
+  [["километр","kilometr","km$","км$"],"len",1000,"км"], [["миль","mile","milya"],"len",1609.344,"миля"], [["метр","metr","meter","m$","м$"],"len",1,"м"],
+  [["сантиметр","santimetr","cm$","см$"],"len",.01,"см"], [["фут","ft$","foot","feet"],"len",.3048,"фут"], [["дюйм","inch","dyuym"],"len",.0254,"дюйм"],
+  [["килограмм","kilogram","kg$","кг$","kilo$","кило$"],"mass",1000,"кг"], [["грамм","gramm","g$","г$"],"mass",1,"г"], [["фунт","funt","pound","lb$","lbs$"],"mass",453.592,"фунт"], [["унци","ounce","oz$"],"mass",28.3495,"унция"],
+  [["цельси","celsius","c$"],"temp",0,"°C"], [["фаренгейт","fahrenheit","f$"],"temp",0,"°F"],
+  [["миллилитр","millilitr","ml$","мл$"],"vol",1,"мл"], [["литр","litr","liter","l$","л$"],"vol",1000,"л"], [["галлон","gallon"],"vol",3785.41,"галлон"]
+];
+function unitOf(tok){ let best = null, bl = 0;
+  for(const u of UNITS) for(const st0 of u[0]){ const st = kw(st0), ex = st.endsWith("$"), stem = ex ? st.slice(0,-1) : st;
+    if((ex ? tok===stem : tok.startsWith(stem)) && stem.length > bl){ best = u; bl = stem.length; } }
+  return best; }
+function tryMath2(s2){
+  const rd = x => Math.round(x*10000)/10000;
+  let m = s2.match(/(?:илдиз|ildiz|корень(?:\s+из)?|square root(?: of)?|sqrt)\s*(\d+(?:\.\d+)?)/);
+  if(m) return t("calc",rd(Math.sqrt(+m[1])));
+  m = s2.match(/(\d+(?:\.\d+)?)\s*(?:нинг|ning|дан|dan|от|of)\s*(\d+(?:\.\d+)?)\s*(?:фоиз\w*|foiz\w*|процент\w*|percent|%)/);
+  if(m) return t("calc",rd(+m[1]*+m[2]/100));
+  m = s2.match(/(\d+(?:\.\d+)?)\s*(?:фоиз\w*|foiz\w*|процент\w*|percent|%)\s*(?:of|от|дан|dan|нинг|ning)?\s*(\d+(?:\.\d+)?)/);
+  if(m) return t("calc",rd(+m[2]*+m[1]/100));
+  const num = s2.match(/\d+(?:\.\d+)?/); if(!num) return null;
+  const us = []; for(const tok of s2.split(/[^a-zа-я0-9.°%]+/).filter(Boolean)){ const u = unitOf(tok); if(u && !us.includes(u)) us.push(u); }
+  if(us.length < 2 || us[0][1] !== us[1][1]) return null;
+  const n = +num[0], [from,to] = us; let r;
+  if(from[1]==="temp") r = from[3]==="°C" ? n*9/5+32 : (n-32)*5/9; else r = n*from[2]/to[2];
+  return `${n} ${from[3]} = ${rd(r)} ${to[3]}`;
+}
+
+/* --- таниш хатоларига бардош: энг яқин оддий буйруқ --- */
+const FUZZY = [
+  ["соат неча","soat necha","what time is it","который час"], ["бугун кайси сана","какое сегодня число","what is the date today"],
+  ["об-хаво кандай","какая погода","how is the weather"], ["хазил айт","расскажи шутку","tell me a joke"], ["кимсан","ты кто","who are you"],
+  ["калайсан","как дела","how are you"], ["рахмат","спасибо","thank you"], ["ердам бер","помоги мне","help me"], ["намоз вакти","время намаза","prayer times"],
+  ["доллар курси","курс доллара","dollar rate"], ["батарея заряди","заряд батареи","battery level"], ["тухта","стоп хватит","stop"]
+];
+let fuzzyBusy = false;
+const skel = x => normPhraseV1(fold(x)).replace(/[aeiouy ]/g,"").replace(/(.)\1+/g,"$1");
+function dice(a,b){
+  if(a.length<2||b.length<2) return 0;
+  const grams = z => { const m = new Map(); for(let i=0;i<z.length-1;i++){ const g=z.slice(i,i+2); m.set(g,(m.get(g)||0)+1); } return m; };
+  const A = grams(a), B = grams(b); let inter = 0; for(const [g,c] of A) inter += Math.min(c,B.get(g)||0);
+  return 2*inter/((a.length-1)+(b.length-1));
+}
+function fuzzyIntent(s){
+  if(tokensOf(s).length > 6) return null; const sk = skel(s); if(sk.length < 3) return null;
+  let best = null, bs = 0;
+  for(const grp of FUZZY) for(const ph of grp){ const pk = skel(ph), ratio = sk.length/pk.length; if(ratio < .6 || ratio > 1.7) continue; const d = dice(sk,pk); if(d > bs){ bs = d; best = grp[0]; } }
+  return bs >= .75 ? best : null;
+}
+
+/* --- овозни текшириш --- */
+async function runDiag(){
+  const lines = [], wasActive = active;
+  lines.push(`${tri("Версия","Версия","Version")}: ${APP_VERSION}`);
+  lines.push(`HTTPS: ${isSecureContext ? "ok" : tri("йўқ (микрофон ишламайди)","нет (микрофон не будет работать)","no (mic won't work)")}`);
+  lines.push(`${tri("Овозни таниш","Распознавание речи","Speech recognition")}: ${SR ? "ok ("+(srLangOverride||L[lang].speech)+")" : tri("йўқ — Chrome/Edge керак","нет — нужен Chrome/Edge","missing — use Chrome/Edge")}`);
+  try{ const pm = await navigator.permissions.query({name:"microphone"}); lines.push(`${tri("Микрофон рухсати","Доступ к микрофону","Microphone permission")}: ${pm.state}`); }catch{}
+  const {voice,lang:vl} = pickVoice();
+  lines.push(`${tri("Овоз чиқариш","Озвучивание","Speech output")}: ${voices.length} ${tri("овоз","голосов","voices")}; ${voice ? voice.name+" ("+vl+")" : tri("овоз топилмади","голос не найден","no voice found")}`);
+  if(lang==="uz" && !(voice && /^uz/i.test(vl))) lines.push(tri("Ўзбекча овоз йўқ: русча овоз ишлатилади, матн унга мослаштирилади.","Узбекского голоса нет: используется русский, текст адаптируется.","No Uzbek voice: a Russian voice is used and text is adapted."));
+  lines.push(navigator.onLine ? "online" : "offline");
+  if(!wasActive && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    try{ const st = await navigator.mediaDevices.getUserMedia({audio:true}); st.getTracks().forEach(x=>x.stop()); lines.push(tri("Микрофон: ишлайди","Микрофон: работает","Microphone: works")); }
+    catch(e){ lines.push(tri("Микрофон хатоси: ","Ошибка микрофона: ","Microphone error: ")+e.name); }
+  }
+  addMsg("sys",lines.join("\n"));
+  return reply(tri("Овозни текшириш тугади. Агар мени эшитаётган бўлсангиз, чиқиш ишлаяпти.","Проверка голоса завершена. Если вы меня слышите, озвучивание работает.","Voice check finished. If you can hear me, speech output works."));
+}
+
+/* --- автоматик янгиланиш --- */
+let pendingNotes = "";
+function flushNotes(){ if(pendingNotes && !locked){ addMsg("sys",pendingNotes); pendingNotes = ""; } }
+async function checkUpdate(manual){
+  if(location.protocol === "file:"){ return manual ? reply(tri("Бу нусха файлдан очилган, ўзи янгиланмайди. Янги версия учун интернетдаги ҳаволадан очинг ёки ZIP'ни қайта юкланг.","Эта копия открыта из файла и не обновляется сама. Откройте ссылку в интернете или скачайте ZIP заново.","This copy runs from a file and doesn't self-update. Open the web link or download the ZIP again.")) : false; }
+  try{
+    const r = await fetch("version.json?"+Date.now(),{cache:"no-store"}); const j = await r.json();
+    if(j.version && j.version !== APP_VERSION){ showUpdate(j); return manual ? reply(tri("Янги версия бор: "+j.version+". Юқоридаги «Янгилаш»ни босинг.","Есть новая версия: "+j.version+". Нажмите «Обновить» вверху.","A new version is available: "+j.version+". Tap Update at the top.")) : true; }
+    if(manual) return reply(tri("Сизда энг янги версия: "+APP_VERSION+".","У вас последняя версия: "+APP_VERSION+".","You have the latest version: "+APP_VERSION+"."));
+  }catch{ if(manual) return reply(tri("Янгиланишни текшириб бўлмади. Интернетни текширинг.","Не удалось проверить обновления. Проверьте интернет.","Couldn't check for updates. Check your internet.")); }
+  return false;
+}
+function showUpdate(j){
+  const bar = $("updBar"); $("updText").textContent = tri("Янги версия тайёр: ","Новая версия: ","New version: ")+j.version; $("updGo").textContent = tri("Янгилаш","Обновить","Update"); bar.hidden = false;
+  const key = "jv_upd_"+j.version, last = +store.get(key,"0");
+  if(Date.now()-last > 600000 && !active && !speaking){ store.set(key,String(Date.now())); setTimeout(()=>{ if(!active && !speaking && !$("txt").value) applyUpdate(); },6000); }   // бир версия учун 10 дақиқада бир марта ўзи янгилайди
+}
+async function applyUpdate(){
+  try{ const ks = await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch{}
+  try{ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.unregister())); }catch{}
+  location.reload();
+}
 
 /* --- хотира --- */
 const kbFacts = () => store.get("jv_kb","").split("\n").map(x=>x.trim()).filter(Boolean);
@@ -1010,11 +1223,11 @@ const BUILTIN = [
 let swT0 = 0, showTimer = null;
 function armAlarm(ts){
   const ms = ts - Date.now(); if(ms <= 0 || ms > 2147000000) return;
-  setTimeout(()=>{
+  trackTimer(setTimeout(()=>{
     try{ store.set("jv_alarms",JSON.stringify(JSON.parse(store.get("jv_alarms","[]")).filter(x=>x!==ts))); }catch{}
     for(let i=0;i<6;i++) setTimeout(()=>chime("ok"),i*900);
     if(locked) speak(t("alarmRing")); else reply(t("alarmRing"));
-  }, ms);
+  }, ms));
 }
 function startShow(){ stopShow(); let i = SHAPES.indexOf(Holo.shape);
   const step = () => { i = (i+1)%SHAPES.length; showShape(SHAPES[i]); };
@@ -1058,16 +1271,24 @@ function tryCalc(s){
   catch{ return L[lang].calcErr; }
 }
 
+async function weatherText(){
+  const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
+  const {latitude:la,longitude:lo} = pos.coords;
+  const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`)).json();
+  const code = j.current.weather_code, wc = L[lang].wcode;
+  const desc = wc[code] ?? wc[Object.keys(wc).map(Number).filter(k=>k<=code).pop()] ?? "";
+  return t("weather",Math.round(j.current.temperature_2m),desc,Math.round(j.daily.temperature_2m_max[0]),Math.round(j.daily.temperature_2m_min[0]));
+}
 async function weather(){
   addMsg("sys",t("weatherWait"));
-  try{
-    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:8000}));
-    const {latitude:la,longitude:lo} = pos.coords;
-    const j = await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`)).json();
-    const code = j.current.weather_code, wc = L[lang].wcode;
-    const desc = wc[code] ?? wc[Object.keys(wc).map(Number).filter(k=>k<=code).pop()] ?? "";
-    return reply(t("weather",Math.round(j.current.temperature_2m),desc,Math.round(j.daily.temperature_2m_max[0]),Math.round(j.daily.temperature_2m_min[0])),{shape:"globe"});
-  }catch{ return reply(t("weatherErr")); }
+  try{ return reply(await weatherText(),{shape:"globe"}); }catch{ return reply(t("weatherErr")); }
+}
+async function briefing(){
+  const d = new Date(), l = L[lang], pad = n=>String(n).padStart(2,"0");
+  let out = t("date",`${d.getDate()} ${l.months[d.getMonth()]}, ${l.days[d.getDay()]}`)+". "+t("time",d.getHours(),pad(d.getMinutes()))+". ";
+  const pend = todoGet().filter(x=>!x.d).length; if(pend) out += tri(`Бажарилмаган вазифалар: ${pend}. `,`Невыполненных задач: ${pend}. `,`Pending tasks: ${pend}. `);
+  try{ out += await Promise.race([weatherText(), new Promise((_,rej)=>setTimeout(rej,7000))]); }catch{}
+  return reply(out.trim(),{shape:"globe"});
 }
 async function currency(s){
   const c = has(s,["евро","euro"])?"EUR" : has(s,["рубл","ruble","rubl","сум"])&&!has(s,["доллар","dollar"])?"RUB" : "USD";
@@ -1126,7 +1347,7 @@ document.addEventListener("pointerdown",touch,{passive:true}); document.addEvent
 
 function setLang(l){
   lang = l; store.set("jv_lang",l); $("lang").value = l; document.documentElement.lang = l;
-  fillVoiceSelect(); relabel(); if(rec){ stopRecognition(); startRecognition(); }
+  srLangOverride = ""; fillVoiceSelect(); relabel(); if(rec){ stopRecognition(); startRecognition(); }
 }
 $("lang").onchange = () => setLang($("lang").value);
 $("voice").onchange = () => store.set("jv_voice",$("voice").value);
@@ -1139,6 +1360,9 @@ $("color").onchange = () => { Holo.setColor($("color").value); store.set("jv_col
 $("apikey").onchange = () => store.set("jv_key",$("apikey").value.trim());
 $("model").onchange = () => store.set("jv_model",$("model").value);
 $("clear").onclick = () => { history=[]; $("log").innerHTML=""; };
+$("diag").onclick = () => { if(!locked) runDiag(); };
+$("updCheck").onclick = () => checkUpdate(true);
+$("updGo").onclick = applyUpdate;
 $("persona").onchange = () => store.set("jv_persona",$("persona").value.trim());
 $("kbText").onchange = () => kbSet($("kbText").value.split("\n").map(x=>x.trim()).filter(Boolean));
 
@@ -1159,10 +1383,16 @@ else { setState("idle"); addMsg("bot", ownerName() ? t("hello",ownerName()) : t(
 // Alice сингари: аввал микрофон ёқилган бўлса, саҳифани биринчи босганда ўзи қайта ёқилади (браузер қоидаси: босиш керак)
 document.addEventListener("pointerdown",e=>{
   if(!SR || active || store.get("jv_active","0")!=="1" || e.target.closest("#mic")) return;
-  active = true; updateMic(); startRecognition();
+  active = true; updateMic(); keepAwake(true); startRecognition();
 },{once:true,capture:true});
 if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(()=>{});
-window.__jarvis = { setFanMode, kbSearch, kbFacts, normPhrase, Holo, route, handleInput, get locked(){ return locked; }, get owner(){ return owner; } };
+$("verSpan").textContent = APP_VERSION;
+{ const seen = store.get("jv_seen","");
+  if(seen && seen !== APP_VERSION) pendingNotes = tri("Жарвис янгиланди","Джарвис обновлён","Jarvis updated")+" ("+APP_VERSION+"): "+APP_NOTES[lang].join("; ")+".";
+  store.set("jv_seen",APP_VERSION); flushNotes(); }
+setTimeout(()=>checkUpdate(false),3000); setInterval(()=>checkUpdate(false),20*60000);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) checkUpdate(false); });
+window.__jarvis = { tryMath2, fuzzyIntent, forRuVoice, forUzVoice, findWake, runDiag, setFanMode, kbSearch, kbFacts, normPhrase, Holo, route, handleInput, get locked(){ return locked; }, get owner(){ return owner; } };
 </script>
 </body>
 </html>
