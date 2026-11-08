@@ -27,3 +27,10 @@
 юқорида «Янгилаш» хабарини чиқаради. Янги версия чиқариш: `python3 tools/release.py 2.2.0`, сўнг commit ва push.
 Овоз билан бирга: «овозни текшир» (диагностика), «янгиланиш бор», «брифинг», «вазифа қўш …», «ойимга қўнғироқ қил»,
 «Тошкентга йўл кўрсат», «10 километр неча миль», «200 нинг 15 фоизи».
+
+
+## Jarvis Pro: videodagi Jarvis (github.com/adewaskar/jarvis) ni o'rnatish
+
+- `jarvis-pro/` — o'rnatgich (Windows `install.ps1`, macOS/Linux `install.sh`), Claude Code skilllari va qo'llanma (`jarvis-pro/README-uz.md`).
+- `downloads/Jarvis-Pro-Installer.zip` — shu papkaning tayyor ZIP'i (`python3 tools/build-jarvis-pro.py` bilan qayta yig'iladi).
+- Jarvis GitHub'dan olinadi va sinalgan versiyaga (`9ae5ec8`) qotiriladi; xavfsizlik yangilanishlari qo'llanib, testlar tekshiriladi.
